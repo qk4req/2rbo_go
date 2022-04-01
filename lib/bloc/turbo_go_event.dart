@@ -53,6 +53,11 @@ class TurboGoSelectTariffEvent extends TurboGoEvent {
   List<Object?> get props => [tariffId];
 }
 
+class TurboGoFindDriverEvent extends TurboGoEvent {
+  @override
+  List<Object?> get props => [];
+}
+
 
 /*class TurboLoginEvent extends TurboEvent {
   final String phoneNumber;

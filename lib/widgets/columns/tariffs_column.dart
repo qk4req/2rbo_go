@@ -25,12 +25,6 @@ class _TariffsColumnState extends State<TariffsColumn> {
 
   @override
   Widget build(BuildContext context) {
-    /*TurboGoBloc.mapController?.moveCamera(
-      CameraUpdate.newBounds(
-        const BoundingBox(northEast: Point(latitude: 5.0, longitude: 5.0), southWest: Point(latitude: 5.5, longitude: 5.5))
-      ),
-      animation: const MapAnimation(type: MapAnimationType.smooth, duration: 2)
-    );*/
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -50,13 +44,7 @@ class _TariffsColumnState extends State<TariffsColumn> {
                           child: OutlinedButton(
                             onPressed: () {
                               BlocProvider.of<TurboGoBloc>(context).add(TurboGoSelectTariffEvent(t.id));
-                              /*TurboGoBloc.orderController.updateNewOrder({
-                                  'tariff': {
-                                    'id': t.id
-                                  }
-                                }
-                              );*/
-                              buttonCarouselController.animateToPage(tariffs.values.toList().indexOf(t));
+                              /*buttonCarouselController.animateToPage(tariffs.values.toList().indexOf(t));*/
                             },
                             child: Text('${t.name}')
                           ),
@@ -67,7 +55,7 @@ class _TariffsColumnState extends State<TariffsColumn> {
               }).toList()
           ),
         ),
-        SingleChildScrollView(
+        /*SingleChildScrollView(
           child: CarouselSlider(
               carouselController: buttonCarouselController,
               items: tariffs.values.map((t) {
@@ -94,7 +82,7 @@ class _TariffsColumnState extends State<TariffsColumn> {
                 scrollDirection: Axis.horizontal
               )
           ),
-        )
+        )*/
       ],
     );
   }

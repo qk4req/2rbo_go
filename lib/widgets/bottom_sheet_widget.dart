@@ -29,6 +29,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
     //const MainColumn(),
     const PointsColumn(),
     const TariffsColumn(),
+    Container(),
     const DriverColumn(),
     const ChatColumn()
   ];
@@ -58,6 +59,9 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
   @override
   Widget build(BuildContext context) {
     double height = MediaQuery.of(context).size.height;
+    //TurboGoBloc.orderController.repo.watch().listen((event) {
+    //  if (event.value)
+    //});
     return BlocListener<TurboGoBloc, TurboGoState>(
       listener: (ctx, state) async {
         if (state is TurboGoLocationHasChangedState) {
@@ -81,10 +85,18 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
         }
 
         if (state is TurboGoTariffsState) {
-          await controller.animateTo(0.6, curve: curve, duration: const Duration(milliseconds: 200));
+          await controller.animateTo(0.4, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
             _column = 1;
+          });
+        }
+
+        if (state is TurboGoSearchState) {
+          await controller.animateTo(0, curve: curve, duration: const Duration(milliseconds: 200));
+
+          setState(() {
+            _column = 2;
           });
         }
 
@@ -92,7 +104,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
           await controller.animateTo(0.5, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
-            _column = 2;
+            _column = 3;
           });
         }
 
@@ -100,7 +112,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
           await controller.animateTo(1, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
-            _column = 3;
+            _column = 4;
           });
         }
       },

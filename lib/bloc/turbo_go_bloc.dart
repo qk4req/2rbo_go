@@ -5,9 +5,6 @@ import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:keyboard_service/keyboard_service.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:turbo_go/main.dart';
-import 'package:turbo_go/models/driver_model.dart';
-import 'package:turbo_go/widgets/map_widget.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import 'turbo_go_event.dart';
@@ -60,6 +57,13 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
       emit(TurboGoNotConnectedState());
     });
 
+    orderController.repo.watch(key: orderController.newOrderKey).listen((event) {
+      OrderModel newOrder = event.value;
+      if (newOrder.status != null) {
+        emit(TurboGoDriverState());
+      }
+    });
+
     on<TurboGoEvent>(_onEvent, transformer: sequential());
   }
 
@@ -69,7 +73,7 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
       DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
       AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
       clientController.update({
-          'key': appKey,
+          //'key': appKey,
           'deviceId': androidInfo.androidId
         },
         () {
@@ -112,9 +116,9 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
           }
           emit(prevState);
         }
-        if (prevState is TurboGoTariffsState) {
+        //if (prevState is TurboGoTariffsState) {
           emit(prevState);
-        }
+        //}
       } else {
         orderController.updateNewOrder({
           'from': {
@@ -154,8 +158,12 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
           'tariffId': event.tariffId ?? defaultTariffId
         }
       );
-      //mapController.
+
       emit(TurboGoTariffsState());
+    }
+
+    if (event is TurboGoFindDriverEvent) {
+      emit(TurboGoSearchState());
     }
   }
   

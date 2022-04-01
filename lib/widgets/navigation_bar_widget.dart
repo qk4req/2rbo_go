@@ -37,24 +37,35 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
                         null :
                         BlocBuilder<TurboGoBloc, TurboGoState>(
                             builder: (ctx, state) {
-                              return _button(
-                                  Text(
-                                    state is TurboGoLocationHasChangedState ?
-                                      /*state.prevState*/'' :
-                                      (state is TurboGoPointsState ? ((newOrder?.whither == null) ? 'Скажу водителю' : 'Далее') : 'Заказать'),
-                                    style: const TextStyle(
-                                        fontSize: 18
+                              if (state is! TurboGoDriverState && state is! TurboGoSearchState) {
+                                return _button(
+                                    Text(
+                                      (
+                                          (state is TurboGoPointsState) ||
+                                          (
+                                            state is TurboGoLocationHasChangedState &&
+                                            state.prevState is TurboGoPointsState
+                                          ) ? ((newOrder?.whither == null) ? 'Скажу водителю' : 'Далее') : 'Заказать'
+                                      ),
+                                      style: const TextStyle(
+                                          fontSize: 18
+                                      ),
                                     ),
-                                  ),
-                                      () {
-                                    switch (state.runtimeType) {
-                                      case TurboGoPointsState:
-                                      case TurboGoExtendedPointsState:
-                                        BlocProvider.of<TurboGoBloc>(context).add(TurboGoSelectTariffEvent());
-                                        break;
+                                        () {
+                                      switch (state.runtimeType) {
+                                        case TurboGoPointsState:
+                                        case TurboGoExtendedPointsState:
+                                          BlocProvider.of<TurboGoBloc>(context).add(TurboGoSelectTariffEvent());
+                                          break;
+                                        case TurboGoTariffsState:
+                                          BlocProvider.of<TurboGoBloc>(context).add(TurboGoFindDriverEvent());
+                                          break;
+                                      }
                                     }
-                                  }
-                              );
+                                );
+                              } else {
+                                return Container();
+                              }
                             }
                         ),
                       );

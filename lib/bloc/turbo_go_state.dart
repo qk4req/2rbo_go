@@ -35,11 +35,17 @@ class TurboGoHomeState extends TurboGoConnectedState {
 }
 
 class TurboGoPointsState extends TurboGoConnectedState {
-  late LocationType type = LocationType.end;
+  LocationType type = LocationType.end;
 
   TurboGoPointsState(
     [this.type=LocationType.end]
   );
+}
+
+class TurboGoExtendedPointsState extends TurboGoPointsState {
+  TurboGoExtendedPointsState(type) {
+    super.type = type;
+  }
 }
 
 enum LocationType {
@@ -49,17 +55,11 @@ enum LocationType {
 
 class TurboGoTariffsState extends TurboGoConnectedState {}
 
+class TurboGoSearchState extends TurboGoConnectedState {}
+
 class TurboGoDriverState extends TurboGoConnectedState {}
 
 class TurboGoChatState extends TurboGoConnectedState {}
-
-class TurboGoExtendedPointsState extends TurboGoPointsState {
-  late LocationType type = LocationType.end;
-
-  TurboGoExtendedPointsState(
-      this.type
-  );
-}
 
 /*
 class TurboNotAuthState extends TurboState {

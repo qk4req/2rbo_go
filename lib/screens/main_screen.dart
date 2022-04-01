@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:keyboard_service/keyboard_service.dart';
-import 'package:turbo_go/widgets/navigation_bar_widget.dart';
 
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_state.dart';
 import '/widgets/map_widget.dart';
+import '/widgets/app_bar_widget.dart';
 import '/widgets/bottom_sheet_widget.dart';
+import '/widgets/navigation_bar_widget.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -25,11 +25,11 @@ class _MainScreenState extends State<MainScreen>{
           KeyboardAutoDismiss(
             scaffold: Scaffold(
               resizeToAvoidBottomInset: true,
-              //appBar: AppBar(title: Text("test"),),
                 body: Stack(
                   alignment: AlignmentDirectional.bottomCenter,
                   children: const <Widget>[
                     MapWidget(),
+                    AppBarWidget(),
                     BottomSheetWidget(),
                     NavigationBarWidget()
                   ],
