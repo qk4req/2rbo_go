@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:turbo_go/models/driver_model.dart';
 import 'package:turbo_go/models/order_model.dart';
 
 
@@ -18,12 +19,20 @@ class _DriverColumnState extends State<DriverColumn> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: orders.listenable(keys: [TurboGoBloc.orderController.newOrderKey]),
-      builder: (BuildContext ctx, Box box, Widget? wid) {
-        OrderModel? newOrder = box.get(TurboGoBloc.orderController.newOrderKey);
-        return Container();
-      }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ValueListenableBuilder(
+            valueListenable: orders.listenable(keys: [TurboGoBloc.orderController.newOrderKey]),
+            builder: (BuildContext ctx, Box box, Widget? wid) {
+              OrderModel? newOrder = box.get(TurboGoBloc.orderController.newOrderKey);
+              if (newOrder?.status == 'confirmed' && newOrder?.driverId != null) {
+                DriverModel? driver = TurboGoBloc.driverController.getById(newOrder?.driverId);
+              }
+              return Container();
+            }
+        )
+      ],
     );
   }
 }

@@ -34,39 +34,44 @@ class OrderController {
     return order['updatedAt'] == repo.get(order['id'])?.updatedAt;
   }
 
-  void update(Map order) {
-    /*if (order.isNotEmpty) {
-      OrderModel? o;
-      if (last?.id == order['id']) {
-        last =
-            OrderModel(
-                order['id'],
-                last?.driverId ?? order['driverId'],
-                last?.clientId ?? order['clientId'],
-                last?.status ?? order['status'],
-                last?.totalTime ?? order['totalTime'],
-                last?.totalSum ?? order['totalSum'],
-                last?.from ?? order['from'],
-                last?.whither ?? order['whither'],
-                last?.comment ?? order['comment'],
-                last?.startedAt ?? order['startedAt'],
-                last?.createdAt ?? order['createdAt'],
-                last?.updatedAt ?? order['updatedAt']
-            );
-        o = last;
-      } else {
-        //o = repo.get(order['id']);
-        //o = OrderModel(
-        //    o.id
-        //);
-      }
+  void create(Map order) {
+    OrderModel o =
+        OrderModel(
+            order['id'],
+            order['driverId'],
+            order['clientId'],
+            order['tariffId'],
+            order['status'],
+            order['totalTime'],
+            (order['totalSum'] as num).toDouble(),
+            order['from'],
+            order['whither'],
+            order['comment'],
+            order['startedAt'],
+            order['createdAt'],
+            order['updatedAt']
+        );
 
-      repo.put(order['id'], o!).then((_) async {
-        if (onSaved != null) {
-          await onSaved();
-        }
-      });
-    }*/
+    repo.put(o.id, o);
+  }
+
+  void update(Map order) {
+    OrderModel o = repo.get(order['id'])!;
+
+    o.driverId = o.driverId ?? order['driverId'];
+    o.clientId = o.clientId ?? order['clientId'];
+    o.tariffId = o.tariffId ?? order['tariffId'];
+    o.status = o.status ?? order['status'];
+    o.totalTime = o.totalTime ?? order['totalTime'];
+    o.totalSum = o.totalSum ?? order['totalSum'];
+    o.from = o.from ?? order['from'];
+    o.whither = o.whither ?? order['whither'];
+    o.comment = o.comment ?? order['comment'];
+    o.startedAt = o.startedAt ?? order['startedAt'];
+    o.createdAt = o.createdAt ?? order['createdAt'];
+    o.updatedAt = o.updatedAt ?? order['updatedAt'];
+
+    repo.put(o.id, o);
   }
 
   void createNewOrder() {
@@ -93,5 +98,9 @@ class OrderController {
         }
       });
     }
+  }
+
+  OrderModel? getLast() {
+    return repo.values.last;
   }
 }

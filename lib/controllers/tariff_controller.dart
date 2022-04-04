@@ -17,7 +17,7 @@ class TariffController {
   }
 
   void update(Map tariff) {
-    if (contains(tariff)) {
+    //if (contains(tariff)) {
       TariffModel t = repo.get(tariff['id'])!;
 
       t.name = t.name ?? tariff['name'];
@@ -33,11 +33,11 @@ class TariffController {
       t.updatedAt = t.updatedAt ?? tariff['updatedAt'];
 
       repo.put(t.id, t);
-    }
+    //}
   }
 
   void create(Map tariff) {
-    if (!contains(tariff)) {
+    //if (!contains(tariff)) {
       TariffModel t = TariffModel(
           tariff['id'],
           tariff['name'],
@@ -53,6 +53,6 @@ class TariffController {
       );
 
       repo.put(t.id, t);
-    }
+    //}
   }
 }

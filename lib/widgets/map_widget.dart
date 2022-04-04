@@ -85,6 +85,37 @@ Point getCentralPoint(List<Point> geoCoordinates) {
   return Point(latitude: centralLatitude * 180 / pi, longitude: centralLongitude * 180 / pi);
 }
 
+double getZoomLevel(List route) {
+  double zoomLevel, minLat, minLong, maxLat, maxLong, latDiff, lngDiff, maxDiff;
+
+
+
+  minLat = route.first[0];
+  minLong = route.first[1];
+  maxLat = route.first[0];
+  maxLong = route.first[1];
+
+  for (var point in route) {
+    if(point[0] < minLat) minLat = point[0];
+    if(point[0] > maxLat) maxLat = point[0];
+    if(point[1] < minLong) minLong = point[1];
+    if(point[1] > maxLong) maxLong = point[1];
+  }
+  latDiff = maxLat - minLat;
+  lngDiff = maxLong - minLong;
+
+  maxDiff = (lngDiff > latDiff) ? lngDiff : latDiff;
+  if (maxDiff < (360 / pow(2, 20))) {
+    zoomLevel = 21;
+  } else {
+    zoomLevel = (-1*( (log(maxDiff)/log(2)) - (log(360)/log(2))));
+    if (zoomLevel < 1) {
+      zoomLevel = 1;
+    }
+  }
+  return zoomLevel;
+}
+
 class _MapWidgetState extends State<MapWidget>{
   static ClientModel? model = TurboGoBloc.clientController.clientModel;
   static YandexMapController? mapController;
@@ -234,36 +265,6 @@ class _MapWidgetState extends State<MapWidget>{
                   }
                 });
 
-                List route = [
-                  TurboGoBloc.orderController.newOrder.from!['coordinates'],
-                  TurboGoBloc.orderController.newOrder.whither!['coordinates']
-                ];
-                double zoomLevel;
-
-                double minLat = route.first[0];
-                double minLong = route.first[1];
-                double maxLat = route.first[0];
-                double maxLong = route.first[1];
-
-                for (var point in route) {
-                  if(point[0] < minLat) minLat = point[0];
-                  if(point[0] > maxLat) maxLat = point[0];
-                  if(point[1] < minLong) minLong = point[1];
-                  if(point[1] > maxLong) maxLong = point[1];
-                }
-                double latDiff = maxLat - minLat;
-                double lngDiff = maxLong - minLong;
-
-                double maxDiff = (lngDiff > latDiff) ? lngDiff : latDiff;
-                if (maxDiff < (360 / pow(2, 20))) {
-                  zoomLevel = 21;
-                } else {
-                  zoomLevel = (-1*( (log(maxDiff)/log(2)) - (log(360)/log(2))));
-                  if (zoomLevel < 1) {
-                    zoomLevel = 1;
-                  }
-                }
-
                 await mapController?.moveCamera(CameraUpdate.newCameraPosition(
                   CameraPosition(
                     target: getCentralPoint([
@@ -276,7 +277,10 @@ class _MapWidgetState extends State<MapWidget>{
                         longitude: TurboGoBloc.orderController.newOrder.whither!['coordinates'][1]
                       )
                     ]),
-                    zoom: zoomLevel - 1
+                    zoom: getZoomLevel([
+                      TurboGoBloc.orderController.newOrder.from!['coordinates'],
+                      TurboGoBloc.orderController.newOrder.whither!['coordinates']
+                    ]) - 1
                   )
                 ), animation: const MapAnimation());
               break;
@@ -294,6 +298,23 @@ class _MapWidgetState extends State<MapWidget>{
                     )
                 ));
               break;
+              case TurboGoDriverState:
+                setState(() {
+                  disableGestures();
+                });
+                /*await mapController?.moveCamera(CameraUpdate.newCameraPosition(
+                    CameraPosition(
+                        target: getCentralPoint([
+                          Point(
+                              latitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][0],
+                              longitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][1]
+                          ),
+                          
+                        ]),
+                        zoom: _defaultZoomLevel
+                    )
+                ));*/
+                break;
               default:
               //onCameraPositionChanged = null;
               break;

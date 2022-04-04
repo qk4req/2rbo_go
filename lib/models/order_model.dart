@@ -20,7 +20,7 @@ class OrderModel {
   @HiveField(6)
   double? totalSum = 0;
   @HiveField(7)
-  int? startedAt;
+  String? startedAt;
   @HiveField(8)
   String? createdAt;
   @HiveField(9)

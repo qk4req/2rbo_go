@@ -60,4 +60,8 @@ class DriverController {
       repo.put(d.id, d);
     //}
   }
+
+  DriverModel? getById(int? id) {
+    return repo.get(id);
+  }
 }

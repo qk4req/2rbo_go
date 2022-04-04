@@ -27,7 +27,7 @@ class OrderModelAdapter extends TypeAdapter<OrderModel> {
       (fields[10] as Map?)?.cast<dynamic, dynamic>(),
       (fields[11] as Map?)?.cast<dynamic, dynamic>(),
       fields[12] as String?,
-      fields[7] as int?,
+      fields[7] as String?,
       fields[8] as String?,
       fields[9] as String?,
     );
