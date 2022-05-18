@@ -1,13 +1,20 @@
-import 'dart:async';
+import 'dart:convert';
 import 'package:hive/hive.dart';
+import 'package:socket_io_client/socket_io_client.dart';
+import 'package:uuid/uuid.dart';
 
+
+
+import '/bloc/turbo_go_bloc.dart';
+import '/controllers/timestamp_controller.dart';
 import '/models/order_model.dart';
 
 class OrderController {
-  //OrderModel? lastOrder;
+  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final Socket _socket = TurboGoBloc.socket;
+  late String newOrderKey;
+  late OrderModel newOrder;
   Box<OrderModel> repo = Hive.box('orders');
-  final String newOrderKey = 'default';
-  final OrderModel newOrder = OrderModel();
 
   OrderController() {
     createNewOrder();
@@ -30,77 +37,128 @@ class OrderController {
     }*/
   }
 
+  bool contains(Map order) {
+    return repo.containsKey(order['uuid']);
+  }
+
   bool compare(Map order) {
-    return order['updatedAt'] == repo.get(order['id'])?.updatedAt;
+    return order['updatedAt'] == repo.get(order['uuid'])?.updatedAt;
   }
 
-  void create(Map order) {
-    OrderModel o =
-        OrderModel(
-            order['id'],
-            order['driverId'],
-            order['clientId'],
-            order['tariffId'],
-            order['status'],
-            order['totalTime'],
-            (order['totalSum'] as num).toDouble(),
-            order['from'],
-            order['whither'],
-            order['comment'],
-            order['startedAt'],
-            order['createdAt'],
-            order['updatedAt']
-        );
+  OrderModel create(Map order, [bool sync = false]) {
+    OrderModel o = OrderModel(
+        order['uuid'],
+        order['driverId'],
+        order['clientId'],
+        order['tariffId'],
+        order['carId'],
+        order['status'] ?? 'filled',
+        order['totalTime'] ?? 0,
+        order['totalSum'] != null ? (order['totalSum'] as num).toDouble() : 0,
+        order['from'] != null ? jsonDecode(order['from']) : null,
+        order['whither'] != null ? jsonDecode(order['whither']) : null,
+        order['comment'],
+        order['startedAt'],
+        order['createdAt'] ?? _timestamp.create().toString(),
+        order['updatedAt'] ?? _timestamp.create().toString(),
+    );
 
-    repo.put(o.id, o);
+    repo.put(o.uuid, o);
+
+    if (sync) {
+      _socket.emit('orders.create', [
+        {
+          'uuid': o.uuid,
+          'driverId': o.driverId,
+          'clientId': o.clientId,
+          'tariffId': o.tariffId,
+          'carId': o.carId,
+          'status': o.status,
+          'from': o.from,
+          'whither': o.whither,
+          'comment': o.comment,
+          'totalTime': o.totalTime,
+          'totalSum': o.totalSum,
+          'startedAt': o.startedAt,
+          'createdAt': o.createdAt,
+          'updatedAt': o.updatedAt
+        }
+      ]);
+    }
+
+    return o;
   }
 
-  void update(Map order) {
-    OrderModel o = repo.get(order['id'])!;
+  OrderModel update(Map order, [bool sync = false]) {
+    OrderModel o = repo.get(order['uuid'])!;
 
-    o.driverId = o.driverId ?? order['driverId'];
-    o.clientId = o.clientId ?? order['clientId'];
-    o.tariffId = o.tariffId ?? order['tariffId'];
-    o.status = o.status ?? order['status'];
-    o.totalTime = o.totalTime ?? order['totalTime'];
-    o.totalSum = o.totalSum ?? order['totalSum'];
-    o.from = o.from ?? order['from'];
-    o.whither = o.whither ?? order['whither'];
-    o.comment = o.comment ?? order['comment'];
-    o.startedAt = o.startedAt ?? order['startedAt'];
-    o.createdAt = o.createdAt ?? order['createdAt'];
-    o.updatedAt = o.updatedAt ?? order['updatedAt'];
+    o.driverId = order['driverId'] ?? o.driverId;
+    o.clientId = order['clientId'] ?? o.clientId;
+    o.tariffId = order['tariffId'] ?? o.tariffId;
+    o.carId = order['carId'] ?? o.carId;
+    o.status = order['status'] ?? o.status;
+    o.totalTime = order['totalTime'] ?? o.totalTime;
+    o.totalSum = order['totalSum'] != null ? (order['totalSum'] as num).toDouble() : o.totalSum;
+    o.from = order['from'] != null ? (order['from'] is String ? jsonDecode(order['from']) : order['from']) : o.from;
+    o.whither = order['whither'] != null ? (order['whither'] is String ? jsonDecode(order['whither']) : order['whither']) : o.whither;
+    o.comment = order['comment'] ?? o.comment;
+    o.startedAt = order['startedAt'] ?? o.startedAt;
+    o.createdAt = order['createdAt'] ?? o.createdAt;
+    o.updatedAt = order['updatedAt'] ?? _timestamp.create().toString();
 
-    repo.put(o.id, o);
+    repo.put(o.uuid, o);
+
+    if (sync) {
+      _socket.emit('orders.update', [
+        {
+          'driverId': o.driverId,
+          'clientId': o.clientId,
+          'tariffId': o.tariffId,
+          'carId': o.carId,
+          'status': o.status,
+          'from': o.from,
+          'whither': o.whither,
+          'comment': o.comment,
+          'totalTime': o.totalTime,
+          'totalSum': o.totalSum,
+          'startedAt': o.startedAt,
+          'createdAt': o.createdAt,
+          'updatedAt': o.updatedAt,
+        },
+        {
+          'uuid': o.uuid
+        }
+      ]);
+    }
+
+    return o;
   }
 
-  void createNewOrder() {
-    repo.put(newOrderKey, newOrder);
+  void createNewOrder([bool sync = true]) {
+    newOrderKey = const Uuid().v4();
+    newOrder = create({
+      'uuid': newOrderKey
+    }, sync);
   }
   
-  void updateNewOrder(Map order, [FutureOr<dynamic> Function()? onSaved]) {
-    if (repo.containsKey(newOrderKey)) {
-      newOrder.driverId = order['driverId'] ?? newOrder.driverId;
-      newOrder.clientId = order['clientId'] ?? newOrder.clientId;
-      newOrder.tariffId = order['tariffId'] ?? newOrder.tariffId;
-      newOrder.status = order['status'] ?? newOrder.status;
-      newOrder.totalTime = order['totalTime'] ?? newOrder.totalTime;
-      newOrder.totalSum = order['totalSum'] ?? newOrder.totalSum;
-      newOrder.from = order['from'] ?? newOrder.from;
-      newOrder.whither = order['whither'] ?? newOrder.whither;
-      newOrder.comment = order['comment'] ?? newOrder.comment;
-      newOrder.startedAt = order['startedAt'] ?? newOrder.startedAt;
-      newOrder.createdAt = order['createdAt'] ?? newOrder.createdAt;
-      newOrder.updatedAt = order['updatedAt'] ?? newOrder.updatedAt;
-      repo.put(newOrderKey, newOrder).then((order) {
-        if (onSaved != null) {
-          onSaved();
-        }
-      });
-    }
-  }
-
-  OrderModel? getLast() {
-    return repo.values.last;
+  void updateNewOrder(Map order, [bool sync = true]) {
+    //if (repo.containsKey(newOrderKey)) {
+      newOrder = update({
+        'uuid': newOrderKey,
+        'driverId': order['driverId'],
+        'clientId': order['clientId'],
+        'tariffId': order['tariffId'],
+        'carId': order['carId'],
+        'status': order['status'],
+        'from': order['from'],
+        'whither': order['whither'],
+        'comment': order['comment'],
+        'totalTime': order['totalTime'],
+        'totalSum': order['totalSum'],
+        'startedAt': order['startedAt'],
+        'createdAt': order['createdAt'],
+        'updatedAt': order['updatedAt']
+      }, sync);
+    //}
   }
 }

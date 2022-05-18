@@ -8,7 +8,7 @@ part of 'driver_model.dart';
 
 class DriverModelAdapter extends TypeAdapter<DriverModel> {
   @override
-  final int typeId = 3;
+  final int typeId = 4;
 
   @override
   DriverModel read(BinaryReader reader) {
@@ -18,50 +18,47 @@ class DriverModelAdapter extends TypeAdapter<DriverModel> {
     };
     return DriverModel(
       fields[0] as int,
-      (fields[1] as Map).cast<dynamic, dynamic>(),
+      fields[1] as String,
       fields[2] as String,
       fields[3] as String,
       fields[4] as String,
-      fields[5] as String,
-      (fields[6] as Map).cast<dynamic, dynamic>(),
+      (fields[5] as Map).cast<dynamic, dynamic>(),
+      fields[6] as String,
       fields[7] as double,
-      fields[8] as double,
-      fields[9] as int,
+      fields[8] as int,
+      fields[9] as double,
       fields[10] as String,
       fields[11] as String,
-      fields[12] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, DriverModel obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.car)
-      ..writeByte(2)
       ..write(obj.lastName)
-      ..writeByte(3)
+      ..writeByte(2)
       ..write(obj.firstName)
-      ..writeByte(4)
+      ..writeByte(3)
       ..write(obj.middleName)
-      ..writeByte(5)
+      ..writeByte(4)
       ..write(obj.phoneNumber)
+      ..writeByte(5)
+      ..write(obj.car)
       ..writeByte(6)
-      ..write(obj.location)
-      ..writeByte(7)
-      ..write(obj.direction)
-      ..writeByte(8)
-      ..write(obj.rating)
-      ..writeByte(9)
-      ..write(obj.activity)
-      ..writeByte(10)
       ..write(obj.status)
-      ..writeByte(11)
+      ..writeByte(7)
+      ..write(obj.rating)
+      ..writeByte(8)
+      ..write(obj.activity)
+      ..writeByte(9)
+      ..write(obj.balance)
+      ..writeByte(10)
       ..write(obj.createdAt)
-      ..writeByte(12)
+      ..writeByte(11)
       ..write(obj.updatedAt);
   }
 

@@ -4,11 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 
 
-import 'columns/main_column.dart';
-import 'columns/points_column.dart';
-import 'columns/tariffs_column.dart';
-import 'columns/driver_column.dart';
-import 'columns/chat_column.dart';
+import 'sheets/points_sheet.dart';
+import 'sheets/tariffs_sheet.dart';
+import 'sheets/driver_sheet.dart';
+import 'sheets/chat_sheet.dart';
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_event.dart';
 import '/bloc/turbo_go_state.dart';
@@ -20,29 +19,30 @@ class BottomSheetWidget extends StatefulWidget {
   _BottomSheetWidgetState createState() => _BottomSheetWidgetState();
 }
 
-class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProviderStateMixin<BottomSheetWidget>{
-  late Animation<double> animation;
-  late AnimationController controller;
-  final Curve curve = Curves.easeIn;
-  int _column = 0;
-  final List<Widget?> columns = [
+class _BottomSheetWidgetState extends State<BottomSheetWidget> with TickerProviderStateMixin<BottomSheetWidget>{
+  // Animation<double> animation;
+  //late AnimationController controller;
+  //final Curve curve = Curves.easeIn;
+  int _state = 0;
+  late LocationType _focus;
+  /*static const List<Widget> sheets = [
     //const MainColumn(),
-    const PointsColumn(),
-    const TariffsColumn(),
-    Container(),
-    const DriverColumn(),
-    const ChatColumn()
-  ];
+    PointsColumn(),
+    TariffsColumn(),
+    SizedBox(),
+    DriverColumn(),
+    ChatColumn()
+  ];*/
 
 
   @override
   void initState() {
     super.initState();
-    controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
+    /*controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
     animation = CurvedAnimation(
       curve: curve,
       parent: controller,
-    );
+    );*/
     //WidgetsBinding.instance?.addPostFrameCallback((duration) {
     //});
     /*Timer(const Duration(seconds: 10), () {
@@ -52,7 +52,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
 
   @override
   void dispose() {
-    controller.dispose();
+    //controller.dispose();
     super.dispose();
   }
 
@@ -64,9 +64,9 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
     //});
     return BlocListener<TurboGoBloc, TurboGoState>(
       listener: (ctx, state) async {
-        if (state is TurboGoLocationHasChangedState) {
-          await controller.animateBack(0, duration: const Duration(milliseconds: 200), curve: curve);
-        }
+        //if (state is TurboGoLocationHasChangedState) {
+        //  await controller.animateTo(0, duration: const Duration(milliseconds: 200), curve: curve);
+        //}
 
         /*if (state is TurboGoHomeState) {
           await controller.animateTo(0.3, duration: const Duration(milliseconds: 200), curve: curve);
@@ -76,47 +76,57 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
           });
         }*/
 
-        if (state is TurboGoPointsState) {
-          await controller.animateTo(state is TurboGoExtendedPointsState ? 0.8 : 0.42, curve: curve, duration: const Duration(milliseconds: 200));
+        if (state is TurboGoSearchState) {
+          //await controller.animateTo(0, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
-            _column = 0;
+            _state = 0;
+          });
+        }
+
+        if (state is TurboGoPointsState) {
+          //await controller.animateTo(state is TurboGoExtendedPointsState ? 0.8 : 0.42, curve: curve, duration: const Duration(milliseconds: 200));
+
+          setState(() {
+            _state = 1;
+            _focus = state.type;
           });
         }
 
         if (state is TurboGoTariffsState) {
-          await controller.animateTo(0.4, curve: curve, duration: const Duration(milliseconds: 200));
+          //await controller.animateTo(0.4, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
-            _column = 1;
-          });
-        }
-
-        if (state is TurboGoSearchState) {
-          await controller.animateTo(0, curve: curve, duration: const Duration(milliseconds: 200));
-
-          setState(() {
-            _column = 2;
+            _state = 2;
           });
         }
 
         if (state is TurboGoDriverState) {
-          await controller.animateTo(0.5, curve: curve, duration: const Duration(milliseconds: 200));
+          //await controller.animateTo(0.5, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
-            _column = 3;
+            _state = 3;
           });
         }
 
         if (state is TurboGoChatState) {
-          await controller.animateTo(1, curve: curve, duration: const Duration(milliseconds: 200));
+          //await controller.animateTo(1, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
-            _column = 4;
+            _state = 4;
           });
         }
       },
-      child: AnimatedBuilder(
+      child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 100),
+          child:
+          _state == 1 ? PointsSheet(focus: _focus) :
+          _state == 2 ? const TariffsSheet() :
+          _state == 3 ? const DriverSheet() :
+          _state == 4 ? const ChatSheet() :
+          null
+      ),
+      /*child: AnimatedBuilder(
         builder: (ctx, child) {
           return SizedBox(
             height: height * animation.value,
@@ -142,7 +152,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
                         color: const Color.fromRGBO(32, 33, 36, 1),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
-                          child: columns[_column]
+                          child: columns[_state]
                         ),
                       ),
                     ),
@@ -151,7 +161,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>  with TickerProvi
             ),
           ),
         ),
-      ),
+      ),*/
     );
   }
 }

@@ -17,10 +17,11 @@ class OrderModelAdapter extends TypeAdapter<OrderModel> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return OrderModel(
-      fields[0] as int?,
+      fields[0] as String,
       fields[1] as int?,
       fields[2] as int?,
       fields[3] as int?,
+      fields[13] as int?,
       fields[4] as String?,
       fields[5] as int?,
       fields[6] as double?,
@@ -36,9 +37,9 @@ class OrderModelAdapter extends TypeAdapter<OrderModel> {
   @override
   void write(BinaryWriter writer, OrderModel obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
-      ..write(obj.id)
+      ..write(obj.uuid)
       ..writeByte(1)
       ..write(obj.driverId)
       ..writeByte(2)
@@ -62,7 +63,9 @@ class OrderModelAdapter extends TypeAdapter<OrderModel> {
       ..writeByte(11)
       ..write(obj.whither)
       ..writeByte(12)
-      ..write(obj.comment);
+      ..write(obj.comment)
+      ..writeByte(13)
+      ..write(obj.carId);
   }
 
   @override

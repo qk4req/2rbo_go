@@ -1,17 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:turbo_go/controllers/driver_controller.dart';
+import 'package:turbo_go/controllers/drivers_online_controller.dart';
 import 'package:turbo_go/models/driver_model.dart';
+import 'package:turbo_go/models/drivers_online_model.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:keyboard_service/keyboard_service.dart';
 
+import '../controllers/timestamp_controller.dart';
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_event.dart';
 import '/bloc/turbo_go_state.dart';
@@ -117,7 +117,10 @@ double getZoomLevel(List route) {
 }
 
 class _MapWidgetState extends State<MapWidget>{
-  static ClientModel? model = TurboGoBloc.clientController.clientModel;
+  final DriverController _driver = TurboGoBloc.driverController;
+  final DriversOnlineController _driversOnline = TurboGoBloc.driversOnlineController;
+  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  static ClientModel? clientModel = TurboGoBloc.clientController.clientModel;
   static YandexMapController? mapController;
   Timer? _timer;
   late Widget _map;
@@ -156,33 +159,58 @@ class _MapWidgetState extends State<MapWidget>{
     }
   }
 
+  void driverOnMap(DriversOnlineModel d) {
+    DriverModel? c = _driver.getById(d.driverId);
+    if (c != null) {
+      int? index;
+      bool exist = false;
+      for (MapObject o in _objects) {
+        index = index == null ? 0 : index++;
+        if (o.mapId.value == 'car_${d.driverId}') {
+          exist = true;
+          break;
+        }
+      }
+
+      if (
+        d.location != null && d.direction != null &&
+        DateTime.parse(d.updatedAt).isAfter(_timestamp.create().subtract(const Duration(seconds: 30))) &&
+        (c.balance > (c.car['tariff']['baseCost'] * c.car['tariff']['commission'])) &&
+        c.status == 'active'
+      ) {
+        if (exist) {
+          _objects[index!] = placemark(d, c);
+        }
+        else {
+          _objects.add(placemark(d, c));
+        }
+      } else {
+        if (exist) {
+          _objects.removeAt(index!);
+        }
+      }
+    }
+  }
+
   @override
   void initState() {
-    TurboGoBloc.driverController.repo.watch().listen((event) {
-      DriverModel d = event.value;
-      //if (d.status == 'free') {
-        setState(() {
-          _objects.add(Placemark(
-              isVisible: d.status == 'free',
-              opacity: 1,
-              point: Point(
-                  latitude: (d.location['coordinates'][0] as num).toDouble(),
-                  longitude: (d.location['coordinates'][1] as num).toDouble()
-              ),
-              mapId: MapObjectId('car_${d.id}'),
-              icon: PlacemarkIcon.single(
-                  PlacemarkIconStyle(
-                      zIndex: 1,
-                      scale: 0.5,
-                      rotationType: RotationType.rotate,
-                      image: BitmapDescriptor.fromBytes(base64Decode(d.car['tariff']['mapIcon']))
-                  )
-              ),
-              direction: d.direction
-          ));
-        });
-      //}
+    Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
+        for (DriversOnlineModel d in _driversOnline.repo.values) {
+          driverOnMap(d);
+        }
+      });
     });
+    /*driversOnlineController.repo.watch().listen((event) {
+      DriversOnlineModel d = event.value;
+
+    });
+
+    if (driversOnlineController.repo.isNotEmpty) {
+      for (DriversOnlineModel d in driversOnlineController.repo.values) {
+        driverOnMap(d);
+      }
+    }*/
     super.initState();
   }
 
@@ -203,10 +231,10 @@ class _MapWidgetState extends State<MapWidget>{
 
 
           CameraPosition position = CameraPosition(
-              zoom: model?.location == null ? 3 : _defaultZoomLevel,
+              zoom: clientModel?.location == null ? 3 : _defaultZoomLevel,
               target: Point(
-                  latitude: model?.location?['coordinates'][0] ?? 61.698394,
-                  longitude: model?.location?['coordinates'][1] ?? 99.502091
+                  latitude: clientModel?.location?['coordinates'][0] ?? 61.698394,
+                  longitude: clientModel?.location?['coordinates'][1] ?? 99.502091
               )
           );
           ctrl.moveCamera(
@@ -227,7 +255,7 @@ class _MapWidgetState extends State<MapWidget>{
       BlocListener<TurboGoBloc, TurboGoState>(
           listener: (BuildContext ctx, TurboGoState state) async {
             switch (state.runtimeType) {
-              case TurboGoPointsState:
+              case TurboGoHomeState:
                 setState(() {
                   enableGestures();
                 });
@@ -244,9 +272,13 @@ class _MapWidgetState extends State<MapWidget>{
                         ),
                         icon: PlacemarkIcon.single(
                             PlacemarkIconStyle(
-                                image: BitmapDescriptor.fromAssetImage('lib/assets/start_point.png')
+                              anchor: const Offset(0.5, 1),
+                              scale: 1.2,
+                              zIndex: 2,
+                              image: BitmapDescriptor.fromAssetImage('lib/assets/start_point.png')
                             )
-                        )
+                        ),
+                        opacity: 1,
                     ));
                   }
                   if (TurboGoBloc.orderController.newOrder.whither != null) {
@@ -258,9 +290,13 @@ class _MapWidgetState extends State<MapWidget>{
                         ),
                         icon: PlacemarkIcon.single(
                           PlacemarkIconStyle(
-                              image: BitmapDescriptor.fromAssetImage('lib/assets/end_point.png')
+                              anchor: const Offset(0.5, 1),
+                              scale: 1.2,
+                              zIndex: 3,
+                            image: BitmapDescriptor.fromAssetImage('lib/assets/end_point.png')
                           )
-                        )
+                        ),
+                        opacity: 1
                     ));
                   }
                 });
@@ -282,7 +318,7 @@ class _MapWidgetState extends State<MapWidget>{
                       TurboGoBloc.orderController.newOrder.whither!['coordinates']
                     ]) - 1
                   )
-                ), animation: const MapAnimation());
+                ), animation: const MapAnimation(type: MapAnimationType.smooth, duration: 1));
               break;
               case TurboGoSearchState:
                 setState(() {
@@ -325,10 +361,11 @@ class _MapWidgetState extends State<MapWidget>{
       BlocBuilder<TurboGoBloc, TurboGoState>(
           builder: (BuildContext ctx, TurboGoState state) {
             if (
+                (state is TurboGoHomeState) ||
                 (state is TurboGoPointsState) ||
                 (
-                    state is TurboGoLocationHasChangedState &&
-                        state.prevState is TurboGoPointsState
+                    state is TurboGoLocationHasChangedState// &&
+                    //state.prevState is TurboGoPointsState
                 )
             ) return picker();
             if (state is TurboGoSearchState) return loader();
@@ -336,6 +373,27 @@ class _MapWidgetState extends State<MapWidget>{
           }
       )
     ],);
+  }
+
+  Placemark placemark(DriversOnlineModel d, DriverModel c) {
+    return Placemark(
+        isVisible: true,
+        opacity: 0.6,
+        point: Point(
+            latitude: (d.location!['coordinates'][0] as num).toDouble(),
+            longitude: (d.location!['coordinates'][1] as num).toDouble()
+        ),
+        mapId: MapObjectId('car_${d.driverId}'),
+        icon: PlacemarkIcon.single(
+            PlacemarkIconStyle(
+                zIndex: 1,
+                scale: 0.5,
+                rotationType: RotationType.rotate,
+                image: BitmapDescriptor.fromBytes(base64Decode(c.car['tariff']['mapIcon']))
+            )
+        ),
+        direction: d.direction!
+    );
   }
 
   Widget picker() {
@@ -351,18 +409,78 @@ class _MapWidgetState extends State<MapWidget>{
                   builder: (BuildContext ctx, TurboGoState state) {
                     if (state is TurboGoLocationHasChangedState) {
                       TurboGoState prevState = state.prevState;
+
+                      if (prevState is TurboGoHomeState) {
+                        return const Text("Откуда вас забрать?", style: TextStyle(color: Colors.white));
+                      }
+
                       if (prevState is TurboGoPointsState) {
                         return Text(prevState.type == LocationType.start ? "Откуда вас забрать?" : "Куда вас отвезти?", style: const TextStyle(color: Colors.white));
                       }
                     }
-                    if (state is TurboGoPointsState) {
-                      return Text(state.type == LocationType.start ? "Заберем вас отсюда" : "Отвезём вас сюда", style: const TextStyle(color: Colors.white));
+
+                    if (state is TurboGoHomeState) {
+                      return const Text("Заберем вас отсюда", style: TextStyle(color: Colors.white));
                     }
-                    return const Text("");
+
+                    if (state is TurboGoPointsState) {
+                      return Text(state.type == LocationType.start ? "Заберём вас отсюда" : "Отвезём вас сюда", style: const TextStyle(color: Colors.white));
+                    }
+
+                    return Container();
                   },
                 ),
                 const SizedBox(height: 15),
-                const Icon(Icons.place, size: 35, color: Colors.white38,),
+                BlocBuilder<TurboGoBloc, TurboGoState>(
+                    builder: (BuildContext ctx, TurboGoState state) {
+                      if (state is TurboGoLocationHasChangedState) {
+                        TurboGoState prevState = state.prevState;
+
+                        if (prevState is TurboGoHomeState) {
+                          return const ImageIcon(
+                            AssetImage('lib/assets/start_point.png'),
+                            size: 35,
+                            color: Colors.white,
+                          );
+                        }
+
+                        if (prevState is TurboGoPointsState) {
+                          return ImageIcon(
+                            AssetImage(
+                              (prevState.type == LocationType.start)
+                                ? 'lib/assets/start_point.png'
+                                : 'lib/assets/end_point.png'
+                            ),
+                            size: 35,
+                            color: (prevState.type == LocationType.start) ? Colors.white : Colors.redAccent
+                          );
+                        }
+                      }
+
+                      if (state is TurboGoHomeState) {
+                        return const ImageIcon(
+                          AssetImage('lib/assets/start_point.png'),
+                          size: 35,
+                          color: Colors.white,
+                        );
+                      }
+
+                      if (state is TurboGoPointsState) {
+                        return ImageIcon(
+                          AssetImage(
+                            (state.type == LocationType.start)
+                              ? 'lib/assets/start_point.png'
+                              : 'lib/assets/end_point.png'
+                          ),
+                          size: 35,
+                          color: (state.type == LocationType.start) ? Colors.white : Colors.redAccent
+                        );
+                      }
+
+                      return Container();
+                    }
+                ),
+                //const Icon(Icons.place, size: 35, color: Colors.white38,),
                 Container(
                   decoration: const ShapeDecoration(
                     shadows: [

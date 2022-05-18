@@ -1,18 +1,22 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:keyboard_service/keyboard_service.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
+import 'package:http/http.dart' as http;
 
+
+
+import '../controllers/driver_controller.dart';
+import '../controllers/timestamp_controller.dart';
 import 'turbo_go_event.dart';
 import 'turbo_go_state.dart';
 import '/controllers/client_controller.dart';
 import '/controllers/tariff_controller.dart';
 import '/controllers/order_controller.dart';
-import '/controllers/driver_controller.dart';
+import '/controllers/drivers_online_controller.dart';
 import '/models/order_model.dart';
 import '/models/tariff_model.dart';
 
@@ -20,7 +24,9 @@ import '/models/tariff_model.dart';
 
 class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
   static YandexMapController? mapController;
+  static TimestampController? timestampController;
   static DriverController driverController = DriverController();
+  static DriversOnlineController driversOnlineController = DriversOnlineController();
   static ClientController clientController = ClientController();
   static TariffController tariffController = TariffController();
   static OrderController orderController = OrderController();
@@ -34,8 +40,8 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
           .setTransports(['websocket'])
           .disableAutoConnect()
           .enableReconnection()
-      //.setReconnectionDelay(API_RECONNECTION_DELAY)
-      //.setReconnectionAttempts(1)
+        //.setReconnectionDelay(API_RECONNECTION_DELAY)
+        //.setReconnectionAttempts(1)
           .setTimeout(5000)
           .build()
   );
@@ -45,9 +51,9 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
     socket.onConnect((_) {
       print("Success! onConnect");
       socket.emit('clients.read', {
-        'deviceId': clientController.clientModel?.deviceId
+        'deviceId': clientController.clientModel!.deviceId
       });
-      socket.emit('drivers.read');
+      socket.emit('driversOnline.read');
       socket.emit('tariffs.read');
       emit(TurboGoConnectedState());
     });
@@ -60,22 +66,25 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
       emit(TurboGoNotConnectedState());
     });
 
-    orderController.repo.watch().listen((event) {
-      OrderModel? last = orderController.getLast();
+    /*orderController.repo.watch().listen((event) {
+      if (orderController.repo.isNotEmpty) {
+        OrderModel? last = orderController.getLast();
 
-      if (last?.status == 'confirmed') {
-        emit(TurboGoDriverState());
-      }
-      if (last?.status == 'submitted') {
-        if (_timer == null) {
-          Timer(const Duration(seconds: 30), () {
-            //WE SEND TO THE NEXT DRIVER
-          });
+        if (last?.status == 'confirmed') {
+          emit(TurboGoDriverState());
+        }
+        if (last?.status == 'submitted') {
+          if (_timer == null) {
+            Timer(const Duration(seconds: 30), () {
+              //WE SEND TO THE NEXT DRIVER
+            });
+          }
         }
       }
-    });
+    });*/
 
     on<TurboGoEvent>(_onEvent, transformer: sequential());
+    timestampController = TimestampController();
   }
 
   FutureOr<void> _onEvent(TurboGoEvent event, Emitter<TurboGoState> emit) async {
@@ -87,9 +96,6 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
           'deviceId': androidInfo.androidId
         },
         () {
-          socket.io.options['query'] = {
-            'jwt': jsonEncode(clientController.repo.toMap())
-          };
           socket.connect();
         }
       );
@@ -97,7 +103,16 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
 
     if (event is TurboGoStartOfLocationChangeEvent) {
       KeyboardService.dismiss();
-      if (state is! TurboGoLocationHasChangedState) {
+      if (state is TurboGoLocationHasChangedState) {
+        TurboGoState prevState = (state as TurboGoLocationHasChangedState).prevState;
+
+        if (prevState is TurboGoPointsState) {
+          orderController.updateNewOrder(
+            prevState.type == LocationType.start ? {'from': {}} : {'whither': {}},
+            false
+          );
+        }
+      } else {
         emit(TurboGoLocationHasChangedState(state));
       }
     }
@@ -105,9 +120,19 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
     if (event is TurboGoEndOfLocationChangeEvent) {
       if (state is TurboGoLocationHasChangedState) {
         TurboGoState prevState = (state as TurboGoLocationHasChangedState).prevState;
-        //if (prevState is TurboGoHomeState) {
-        //  emit(prevState);
-        //}
+        if (prevState is TurboGoHomeState) {
+          //http.get(Uri.parse('API_URL')).then((res) {
+
+          //}).catchError((error) {
+            orderController.updateNewOrder({
+              'from': {
+                'type': 'Point',
+                'coordinates': [event.point.latitude, event.point.longitude]
+              }
+            });
+          //});
+        }
+
         if (prevState is TurboGoPointsState) {
           if (prevState.type == LocationType.start) {
             orderController.updateNewOrder({
@@ -124,34 +149,35 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
               }
             });
           }
-          emit(prevState);
         }
-        //if (prevState is TurboGoTariffsState) {
-          emit(prevState);
-        //}
+
+        emit(prevState);
       } else {
         orderController.updateNewOrder({
           'from': {
             'type': 'Point',
             'coordinates': [event.point.latitude, event.point.longitude]
-          }
+          },
+          //'whither': {}
         });
-        emit(TurboGoPointsState(LocationType.start));
+        emit(TurboGoHomeState());
       }
     }
 
     if (event is TurboGoChangeStartPointEvent) {
       if (state is TurboGoPointsState) {
         (state as TurboGoPointsState).type = LocationType.start;
+      } else {
+        emit(TurboGoPointsState(LocationType.start));
       }
-      emit(TurboGoExtendedPointsState(LocationType.start));
     }
 
     if (event is TurboGoChangeEndPointEvent) {
       if (state is TurboGoPointsState) {
         (state as TurboGoPointsState).type = LocationType.end;
+      } else {
+        emit(TurboGoPointsState(LocationType.end));
       }
-      emit(TurboGoExtendedPointsState(LocationType.end));
     }
 
     //if (event is TurboGoFindEndPointsEvent) {
@@ -173,13 +199,11 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
     }
 
     if (event is TurboGoFindDriverEvent) {
-      socket.emit('orders.create', {
+      orderController.updateNewOrder({
         'clientId': clientController.clientModel?.id,
-        'driverId': driverController.repo.values.first.id,
-        'from': orderController.newOrder.from,
-        'whither': orderController.newOrder.whither,
-        'comment': orderController.newOrder.comment,
-        'status': 'submitted',
+        'driverId': driversOnlineController.repo.values.first.driver['id'],
+        'carId': driversOnlineController.repo.values.first.driver['car']['id'],
+        'status': 'submitted'
       });
 
       emit(TurboGoSearchState());
@@ -226,43 +250,71 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
 
 
 
-    //DRIVERS
-    socket.on('drivers.read', (data) {
+    //DRIVERS ONLINE
+    socket.on('driversOnline.read', (data) {
       if (data['success']) {
         List drivers = data['payload'];
+
         for (Map d in drivers) {
           if (!driverController.contains(d)) {
-            driverController.create(d);
+            driverController.create(d['driver']);
+            /*Map tariff = d['driver']['car']['tariff'];
+            if (!tariffController.contains(tariff)) {
+              tariffController.create(tariff);
+            } else {
+              if (!tariffController.compare(tariff)) {
+                tariffController.update(tariff);
+              }
+            }*/
+          }
+          if (!driversOnlineController.contains(d)) {
+            driversOnlineController.create(d);
           } else {
-            if (!driverController.compare(d)) {
-              driverController.update(d);
+            if (!driversOnlineController.compare(d)) {
+              driversOnlineController.update(d);
             }
           }
         }
       }
     });
+
+    socket.on('driversOnline.update', (data) {
+      if (data['success']) {
+        Map driver = data['payload'];
+        if (driversOnlineController.contains(driver) && !driversOnlineController.compare(driver)) {
+          driversOnlineController.update(driver);
+        }
+      }
+    });
+
     socket.on('drivers.update', (data) {
       if (data['success']) {
         Map driver = data['payload'];
-        driverController.update(driver);
+        if (driverController.contains(driver) && !driverController.compare(driver)) {
+          driverController.update(driver);
+        }
       }
     });
 
 
 
     //ORDERS
-    socket.on('orders.create', (data) {
+    /*socket.on('orders.create', (data) {
       if (data['success']) {
         Map order = data['payload'];
-        orderController.create(order);
+        if (order['clientId'] == clientController.clientModel!.id) {
+          orderController.create(order);
+        }
       } else {
       }
-    });
+    });*/
 
     socket.on('orders.update', (data) {
       if (data['success']) {
         Map order = data['payload'];
-        orderController.update(order);
+        if (orderController.contains(order) && !orderController.compare(order)) {
+          orderController.update(order);
+        }
       }
     });
   }

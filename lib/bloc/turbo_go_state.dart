@@ -29,8 +29,6 @@ class TurboGoLocationHasChangedState extends TurboGoConnectedState {
 //class TurboGoLocationHasNotChangedState extends TurboGoConnectedState {
 //}
 
-
-
 class TurboGoHomeState extends TurboGoConnectedState {
 }
 
@@ -38,14 +36,8 @@ class TurboGoPointsState extends TurboGoConnectedState {
   LocationType type = LocationType.end;
 
   TurboGoPointsState(
-    [this.type=LocationType.end]
+      [this.type=LocationType.end]
   );
-}
-
-class TurboGoExtendedPointsState extends TurboGoPointsState {
-  TurboGoExtendedPointsState(type) {
-    super.type = type;
-  }
 }
 
 enum LocationType {

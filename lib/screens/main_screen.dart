@@ -24,7 +24,7 @@ class _MainScreenState extends State<MainScreen>{
         return
           KeyboardAutoDismiss(
             scaffold: Scaffold(
-              resizeToAvoidBottomInset: true,
+              resizeToAvoidBottomInset: false,
                 body: Stack(
                   alignment: AlignmentDirectional.bottomCenter,
                   children: const <Widget>[
@@ -35,8 +35,7 @@ class _MainScreenState extends State<MainScreen>{
                   ],
                 )
             ),
-          )
-          ;
+          );
       }
       return Container();
     });

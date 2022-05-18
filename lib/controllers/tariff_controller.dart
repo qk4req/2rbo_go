@@ -16,18 +16,21 @@ class TariffController {
     return repo.containsKey(tariff['id']);
   }
 
+  bool containsById(int tariffId) {
+    return contains({
+      'id': tariffId
+    });
+  }
+
   void update(Map tariff) {
     //if (contains(tariff)) {
       TariffModel t = repo.get(tariff['id'])!;
 
       t.name = t.name ?? tariff['name'];
-      print(tariff['mapIcon']);
       t.mapIcon = t.mapIcon ?? tariff['mapIcon'];
       t.baseCost = t.baseCost ?? (tariff['baseCost'] as num).toDouble();
       t.ridePerMin = t.ridePerMin ?? (tariff['ridePerMin'] as num).toDouble();
-      t.submissionPerMin = t.submissionPerMin ?? (tariff['submissionPerMin'] as num).toDouble();
       t.ridePerKm = t.ridePerKm ?? (tariff['ridePerKm'] as num).toDouble();
-      t.submissionPerKm = t.submissionPerKm ?? (tariff['submissionPerKm'] as num).toDouble();
       t.waitPerMin = t.waitPerMin ?? (tariff['waitPerMin'] as num).toDouble();
       t.createdAt = t.createdAt ?? tariff['createdAt'];
       t.updatedAt = t.updatedAt ?? tariff['updatedAt'];
@@ -44,9 +47,7 @@ class TariffController {
           tariff['mapIcon'],
           (tariff['baseCost'] as num).toDouble(),
           (tariff['ridePerMin'] as num).toDouble(),
-          (tariff['submissionPerMin'] as num).toDouble(),
           (tariff['ridePerKm'] as num).toDouble(),
-          (tariff['submissionPerKm'] as num).toDouble(),
           (tariff['waitPerMin'] as num).toDouble(),
           tariff['createdAt'],
           tariff['updatedAt']

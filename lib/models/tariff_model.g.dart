@@ -22,9 +22,7 @@ class TariffModelAdapter extends TypeAdapter<TariffModel> {
       fields[10] as String?,
       fields[2] as double?,
       fields[3] as double?,
-      fields[4] as double?,
       fields[5] as double?,
-      fields[6] as double?,
       fields[7] as double?,
       fields[8] as String?,
       fields[9] as String?,
@@ -34,7 +32,7 @@ class TariffModelAdapter extends TypeAdapter<TariffModel> {
   @override
   void write(BinaryWriter writer, TariffModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -43,12 +41,8 @@ class TariffModelAdapter extends TypeAdapter<TariffModel> {
       ..write(obj.baseCost)
       ..writeByte(3)
       ..write(obj.ridePerMin)
-      ..writeByte(4)
-      ..write(obj.submissionPerMin)
       ..writeByte(5)
       ..write(obj.ridePerKm)
-      ..writeByte(6)
-      ..write(obj.submissionPerKm)
       ..writeByte(7)
       ..write(obj.waitPerMin)
       ..writeByte(8)

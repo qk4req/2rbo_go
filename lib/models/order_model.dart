@@ -6,7 +6,7 @@ part 'order_model.g.dart';
 @HiveType(typeId: 1)
 class OrderModel {
   @HiveField(0)
-  int? id;
+  String uuid;
   @HiveField(1)
   int? driverId;
   @HiveField(2)
@@ -31,13 +31,16 @@ class OrderModel {
   Map? whither;
   @HiveField(12)
   String? comment = '';
+  @HiveField(13)
+  int? carId;
 
   OrderModel(
+      this.uuid,
       [
-        this.id,
         this.driverId,
         this.clientId,
         this.tariffId,
+        this.carId,
         this.status,
         this.totalTime=0,
         this.totalSum=0,

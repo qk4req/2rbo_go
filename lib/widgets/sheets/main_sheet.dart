@@ -8,14 +8,14 @@ import '../map_widget.dart';
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_event.dart';
 
-class MainColumn extends StatefulWidget {
-  const MainColumn({Key? key}) : super(key: key);
+class MainSheet extends StatefulWidget {
+  const MainSheet({Key? key}) : super(key: key);
 
   @override
-  _MainColumnState createState() => _MainColumnState();
+  _MainSheetState createState() => _MainSheetState();
 }
 
-class _MainColumnState extends State<MainColumn> {
+class _MainSheetState extends State<MainSheet> {
   @override
   Widget build(BuildContext context) {
     return Column(

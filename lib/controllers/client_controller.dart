@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:hive/hive.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 
 import '/bloc/turbo_go_bloc.dart';
 import '/models/client_model.dart';
 
 class ClientController {
+  final Socket _socket = TurboGoBloc.socket;
   ClientModel? clientModel;
   Box repo = Hive.box('client');
 
@@ -39,13 +41,13 @@ class ClientController {
           );
           StreamSubscription<Position> positionStream =
           Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position? position) {
-            if (TurboGoBloc.socket.connected) {
-              TurboGoBloc.socket.emit('clients.update', {
-                    'type': 'Point',
-                    'coordinates': [position?.latitude, position?.longitude]
-                  }
-              );
-            }
+            _socket.emit(
+              'clients.update',
+              {
+                'type': 'Point',
+                'coordinates': [position?.latitude, position?.longitude]
+              }
+            );
           });
           break;
       }
