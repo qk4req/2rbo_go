@@ -10,7 +10,7 @@ class OrderModel {
   @HiveField(1)
   int? driverId;
   @HiveField(2)
-  int? clientId;
+  String? clientId;
   @HiveField(3)
   int? tariffId;
   @HiveField(4)

@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:turbo_go/models/tariff_model.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 abstract class TurboGoEvent extends Equatable {
@@ -11,6 +10,8 @@ class TurboGoStartEvent extends TurboGoEvent {
   List<Object> get props => [];
 }
 
+
+
 abstract class TurboGoMapEvent extends TurboGoEvent {
   @override
   List<Object> get props => [];
@@ -19,10 +20,26 @@ abstract class TurboGoMapEvent extends TurboGoEvent {
 class TurboGoStartOfLocationChangeEvent extends TurboGoMapEvent {}
 
 class TurboGoEndOfLocationChangeEvent extends TurboGoMapEvent {
-  Point point;
+  final Point point;
 
   TurboGoEndOfLocationChangeEvent(this.point);
 }
+
+
+
+class TurboGoHomeEvent extends TurboGoEvent {
+  @override
+  List<Object?> get props => [];
+}
+
+
+
+class TurboGoDriverEvent extends TurboGoEvent {
+  @override
+  List<Object?> get props => [];
+}
+
+
 
 abstract class TurboGoChangePointEvent extends TurboGoEvent {
   @override
@@ -35,58 +52,40 @@ class TurboGoChangeStartPointEvent extends TurboGoChangePointEvent {
 class TurboGoChangeEndPointEvent extends TurboGoChangePointEvent {
 }
 
-class TurboGoFindEndPointsEvent extends TurboGoEvent {
-  String? value;
 
-  TurboGoFindEndPointsEvent(this.value);
+
+class TurboGoFindEndPointsEvent extends TurboGoEvent {
+  final String? value;
+
+  const TurboGoFindEndPointsEvent(this.value);
 
   @override
   List<Object?> get props => [value];
 }
 
-class TurboGoSelectTariffEvent extends TurboGoEvent {
-  int? tariffId;
+class TurboGoTariffsEvent extends TurboGoEvent {
+  final int? tariffId;
 
-  TurboGoSelectTariffEvent([this.tariffId]);
+  const TurboGoTariffsEvent([this.tariffId]);
 
   @override
   List<Object?> get props => [tariffId];
 }
 
-class TurboGoFindDriverEvent extends TurboGoEvent {
+
+
+class TurboGoSearchEvent extends TurboGoEvent {
   @override
   List<Object?> get props => [];
 }
 
 
-/*class TurboLoginEvent extends TurboEvent {
-  final String phoneNumber;
-  final String password;
 
-  const TurboLoginEvent({required this.phoneNumber, required this.password});
+class TurboGoAddClientDataEvent extends TurboGoEvent {
+  final String? phoneNumber;
+
+  const TurboGoAddClientDataEvent(this.phoneNumber);
 
   @override
-  List<Object> get props => [phoneNumber, password];
+  List<Object?> get props => [phoneNumber];
 }
-
-
-
-abstract class TurboOrderEvent extends TurboEvent {
-  @override
-  List<Object> get props => [];
-}
-class TurboAddOrderEvent extends TurboOrderEvent {}
-class TurboStartOrderEvent extends TurboOrderEvent {}
-class TurboActiveOrderEvent extends TurboOrderEvent {}
-class TurboPauseOrderEvent extends TurboOrderEvent {}
-class TurboFinishOrderEvent extends TurboOrderEvent {}
-class TurboRefuseOrderEvent extends TurboOrderEvent {}
-class TurboConfirmOrderEvent extends TurboOrderEvent {}
-
-
-
-class TurboBackPressedEvent extends TurboEvent {
-  @override
-  List<Object?> get props => throw UnimplementedError();
-}
-*/

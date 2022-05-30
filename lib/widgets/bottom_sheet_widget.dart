@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,7 +8,6 @@ import 'sheets/tariffs_sheet.dart';
 import 'sheets/driver_sheet.dart';
 import 'sheets/chat_sheet.dart';
 import '/bloc/turbo_go_bloc.dart';
-import '/bloc/turbo_go_event.dart';
 import '/bloc/turbo_go_state.dart';
 
 class BottomSheetWidget extends StatefulWidget {
@@ -19,14 +17,14 @@ class BottomSheetWidget extends StatefulWidget {
   _BottomSheetWidgetState createState() => _BottomSheetWidgetState();
 }
 
-class _BottomSheetWidgetState extends State<BottomSheetWidget> with TickerProviderStateMixin<BottomSheetWidget>{
-  // Animation<double> animation;
-  //late AnimationController controller;
-  //final Curve curve = Curves.easeIn;
+class _BottomSheetWidgetState extends State<BottomSheetWidget>/* with TickerProviderStateMixin<BottomSheetWidget>*/{
+  /* Animation<double> animation;
+  late AnimationController controller;
+  final Curve curve = Curves.easeIn;*/
   int _state = 0;
   late LocationType _focus;
   /*static const List<Widget> sheets = [
-    //const MainColumn(),
+    const MainColumn(),
     PointsColumn(),
     TariffsColumn(),
     SizedBox(),
@@ -42,10 +40,8 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget> with TickerProvid
     animation = CurvedAnimation(
       curve: curve,
       parent: controller,
-    );*/
-    //WidgetsBinding.instance?.addPostFrameCallback((duration) {
-    //});
-    /*Timer(const Duration(seconds: 10), () {
+    );
+    Timer(const Duration(seconds: 10), () {
       controller.reverse(from: 1);
     });*/
   }
@@ -58,12 +54,12 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget> with TickerProvid
 
   @override
   Widget build(BuildContext context) {
-    double height = MediaQuery.of(context).size.height;
-    //TurboGoBloc.orderController.repo.watch().listen((event) {
-    //  if (event.value)
-    //});
+    /*double height = MediaQuery.of(context).size.height;
+    TurboGoBloc.orderController.repo.watch().listen((event) {
+      if (event.value)
+    });*/
     return BlocListener<TurboGoBloc, TurboGoState>(
-      listener: (ctx, state) async {
+      listener: (BuildContext ctx, TurboGoState state) async {
         //if (state is TurboGoLocationHasChangedState) {
         //  await controller.animateTo(0, duration: const Duration(milliseconds: 200), curve: curve);
         //}
@@ -76,7 +72,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget> with TickerProvid
           });
         }*/
 
-        if (state is TurboGoSearchState) {
+        if ([TurboGoHomeState, TurboGoSearchState].contains(state.runtimeType)) {
           //await controller.animateTo(0, curve: curve, duration: const Duration(milliseconds: 200));
 
           setState(() {
@@ -118,7 +114,17 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget> with TickerProvid
         }
       },
       child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 100),
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return SlideTransition(
+              position:
+                Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
+              child: FadeTransition(
+                opacity: Tween<double>(begin: 0.0, end: 1.0).animate(animation),
+                child: child,
+              )
+            );
+          },
           child:
           _state == 1 ? PointsSheet(focus: _focus) :
           _state == 2 ? const TariffsSheet() :
@@ -126,42 +132,6 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget> with TickerProvid
           _state == 4 ? const ChatSheet() :
           null
       ),
-      /*child: AnimatedBuilder(
-        builder: (ctx, child) {
-          return SizedBox(
-            height: height * animation.value,
-            child: child,
-          );
-        },
-        animation: animation,
-        child: SingleChildScrollView(
-          reverse: false,
-          physics: const NeverScrollableScrollPhysics(),
-          child: SizedBox(
-            height: height,
-            child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(20.0),
-                          topRight: Radius.circular(20.0)),
-                      child: Container(
-                        padding: const EdgeInsets.all(15.0),
-                        color: const Color.fromRGBO(32, 33, 36, 1),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: columns[_state]
-                        ),
-                      ),
-                    ),
-                  )
-                ]
-            ),
-          ),
-        ),
-      ),*/
     );
   }
 }

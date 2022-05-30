@@ -27,6 +27,7 @@ class DriverModelAdapter extends TypeAdapter<DriverModel> {
       fields[7] as double,
       fields[8] as int,
       fields[9] as double,
+      fields[12] as String?,
       fields[10] as String,
       fields[11] as String,
     );
@@ -35,7 +36,7 @@ class DriverModelAdapter extends TypeAdapter<DriverModel> {
   @override
   void write(BinaryWriter writer, DriverModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class DriverModelAdapter extends TypeAdapter<DriverModel> {
       ..writeByte(10)
       ..write(obj.createdAt)
       ..writeByte(11)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(12)
+      ..write(obj.avatar);
   }
 
   @override

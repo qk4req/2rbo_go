@@ -4,24 +4,25 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:turbo_go/controllers/driver_controller.dart';
-import 'package:turbo_go/controllers/drivers_online_controller.dart';
-import 'package:turbo_go/models/driver_model.dart';
-import 'package:turbo_go/models/drivers_online_model.dart';
+import 'package:turbo_go/controllers/order_controller.dart';
+import 'package:turbo_go/models/clients_online_model.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:keyboard_service/keyboard_service.dart';
 
-import '../controllers/timestamp_controller.dart';
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_event.dart';
 import '/bloc/turbo_go_state.dart';
+import '/controllers/driver_controller.dart';
+import '/controllers/drivers_online_controller.dart';
+import '/models/driver_model.dart';
+import '/models/drivers_online_model.dart';
 import '/models/client_model.dart';
 
 class MapWidget extends StatefulWidget {
   const MapWidget({Key? key}) : super(key: key);
 
   @override
-  _MapWidgetState createState() => _MapWidgetState();
+  MapWidgetState createState() => MapWidgetState();
 }
 
 double getBoundsZoomLevel(BoundingBox bounds, Size mapDimensions) {
@@ -116,19 +117,19 @@ double getZoomLevel(List route) {
   return zoomLevel;
 }
 
-class _MapWidgetState extends State<MapWidget>{
+class MapWidgetState extends State<MapWidget>{
+  static ClientsOnlineModel? clientsOnlineModel = TurboGoBloc.clientsOnlineController.clientsOnlineModel;
   final DriverController _driver = TurboGoBloc.driverController;
   final DriversOnlineController _driversOnline = TurboGoBloc.driversOnlineController;
-  final TimestampController _timestamp = TurboGoBloc.timestampController!;
-  static ClientModel? clientModel = TurboGoBloc.clientController.clientModel;
+  final OrderController _order = TurboGoBloc.orderController;
   static YandexMapController? mapController;
-  Timer? _timer;
   late Widget _map;
   static final List<MapObject> _objects = [];
   static bool _zoomEnabled = true;
   static bool _scrollEnabled = true;
   static bool _fastTapEnabled = true;
   static const double _defaultZoomLevel = 16.5;
+  Timer? _timer;
 
   static void enableGestures() {
     _zoomEnabled = true;
@@ -142,14 +143,43 @@ class _MapWidgetState extends State<MapWidget>{
     _fastTapEnabled = false;
   }
 
-  void defaultCameraPositionCallback (CameraPosition position, CameraUpdateReason reason, finished) {
+  static void clearObjects() {
+    _objects.clear();
+  }
+
+  static void clearPoints () {
+    _objects.removeWhere((MapObject o) {
+      return o.mapId.value.contains('point');
+    });
+  }
+
+  static CameraPosition defaultCameraPosition([bool animated = false]) {
+    CameraPosition position = CameraPosition(
+        zoom: clientsOnlineModel?.location == null ? 3 : _defaultZoomLevel,
+        target: Point(
+            latitude: clientsOnlineModel?.location?['coordinates'][0] ?? 61.698394,
+            longitude: clientsOnlineModel?.location?['coordinates'][1] ?? 99.502091
+        )
+    );
+
+    mapController?.moveCamera(
+        CameraUpdate.newCameraPosition(
+            position
+        ),
+      //animation: animated ? const MapAnimation(type: MapAnimationType.smooth, duration: 2) : null
+    );
+
+    return position;
+  }
+
+  void cameraPositionCallback (CameraPosition position, CameraUpdateReason reason, finished) {
     KeyboardService.dismiss();
     if (reason.name == 'gestures') {
       BlocProvider.of<TurboGoBloc>(context).add(TurboGoStartOfLocationChangeEvent());
       _timer?.cancel();
       if (finished) {
         _timer = Timer(const Duration(milliseconds: 500), () {
-          TurboGoBloc.mapController?.getCameraPosition().then((CameraPosition position) {
+          mapController!.getCameraPosition().then((CameraPosition position) {
             BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
                 Point(latitude: position.target.latitude, longitude: position.target.longitude)
             ));
@@ -173,10 +203,8 @@ class _MapWidgetState extends State<MapWidget>{
       }
 
       if (
-        d.location != null && d.direction != null &&
-        DateTime.parse(d.updatedAt).isAfter(_timestamp.create().subtract(const Duration(seconds: 30))) &&
-        (c.balance > (c.car['tariff']['baseCost'] * c.car['tariff']['commission'])) &&
-        c.status == 'active'
+        d.isOnline() &&
+        d.checkAvailability()
       ) {
         if (exist) {
           _objects[index!] = placemark(d, c);
@@ -194,13 +222,6 @@ class _MapWidgetState extends State<MapWidget>{
 
   @override
   void initState() {
-    Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        for (DriversOnlineModel d in _driversOnline.repo.values) {
-          driverOnMap(d);
-        }
-      });
-    });
     /*driversOnlineController.repo.watch().listen((event) {
       DriversOnlineModel d = event.value;
 
@@ -212,13 +233,24 @@ class _MapWidgetState extends State<MapWidget>{
       }
     }*/
     super.initState();
+    WidgetsBinding.instance!.addPostFrameCallback((_) {
+      Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) {
+          setState(() {
+            for (DriversOnlineModel d in _driversOnline.repo.values) {
+              driverOnMap(d);
+            }
+          });
+        }
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     _map = YandexMap(
         mapObjects: _objects,
-        onCameraPositionChanged: defaultCameraPositionCallback,
+        onCameraPositionChanged: cameraPositionCallback,
         nightModeEnabled: true,
         rotateGesturesEnabled: false,
         tiltGesturesEnabled: false,
@@ -227,27 +259,17 @@ class _MapWidgetState extends State<MapWidget>{
         fastTapEnabled: _fastTapEnabled,
         onMapCreated: (YandexMapController ctrl) {
           mapController = ctrl;
-          TurboGoBloc.mapController = ctrl;
 
-
-          CameraPosition position = CameraPosition(
-              zoom: clientModel?.location == null ? 3 : _defaultZoomLevel,
-              target: Point(
-                  latitude: clientModel?.location?['coordinates'][0] ?? 61.698394,
-                  longitude: clientModel?.location?['coordinates'][1] ?? 99.502091
-              )
-          );
-          ctrl.moveCamera(
-            CameraUpdate.newCameraPosition(
-                position
+          //clearObjects();
+          //enableGestures();
+          defaultCameraPosition();
+          //BlocProvider.of<TurboGoBloc>(context).add(TurboGoHomeEvent());
+          /*BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
+            Point(
+              latitude: position.target.latitude,
+              longitude: position.target.longitude
             )
-          );
-          BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
-              Point(
-                  latitude: position.target.latitude,
-                  longitude: position.target.longitude
-              )
-          ));
+          ));*/
         }
     );
 
@@ -258,98 +280,130 @@ class _MapWidgetState extends State<MapWidget>{
               case TurboGoHomeState:
                 setState(() {
                   enableGestures();
+                  if ((state as TurboGoHomeState).reset) {
+                    clearPoints();
+                    defaultCameraPosition();
+                  }
                 });
               break;
               case TurboGoTariffsState:
                 setState(() {
                   disableGestures();
-                  if (TurboGoBloc.orderController.newOrder.from != null) {
+                  if (_order.last!.from != null && _order.last!.from!['coordinates'] != null) {
                     _objects.add(Placemark(
-                        mapId: const MapObjectId('start_point'),
-                        point: Point(
-                            latitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][0],
-                            longitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][1]
-                        ),
-                        icon: PlacemarkIcon.single(
-                            PlacemarkIconStyle(
+                      mapId: const MapObjectId('start_point'),
+                      point: Point(
+                          latitude: _order.last!.from!['coordinates'][0],
+                          longitude: _order.last!.from!['coordinates'][1]
+                      ),
+                      icon: PlacemarkIcon.single(
+                          PlacemarkIconStyle(
                               anchor: const Offset(0.5, 1),
                               scale: 1.2,
                               zIndex: 2,
                               image: BitmapDescriptor.fromAssetImage('lib/assets/start_point.png')
-                            )
-                        ),
-                        opacity: 1,
+                          )
+                      ),
+                      opacity: 1,
                     ));
                   }
-                  if (TurboGoBloc.orderController.newOrder.whither != null) {
+                  if (_order.last!.whither != null && _order.last!.whither!['coordinates'] != null) {
                     _objects.add(Placemark(
                         mapId: const MapObjectId('end_point'),
                         point: Point(
-                            latitude: TurboGoBloc.orderController.newOrder.whither!['coordinates'][0],
-                            longitude: TurboGoBloc.orderController.newOrder.whither!['coordinates'][1]
+                            latitude: _order.last!.whither!['coordinates'][0],
+                            longitude: _order.last!.whither!['coordinates'][1]
                         ),
                         icon: PlacemarkIcon.single(
-                          PlacemarkIconStyle(
-                              anchor: const Offset(0.5, 1),
-                              scale: 1.2,
-                              zIndex: 3,
-                            image: BitmapDescriptor.fromAssetImage('lib/assets/end_point.png')
-                          )
+                            PlacemarkIconStyle(
+                                anchor: const Offset(0.5, 1),
+                                scale: 1.2,
+                                zIndex: 3,
+                                image: BitmapDescriptor.fromAssetImage('lib/assets/end_point.png')
+                            )
                         ),
                         opacity: 1
                     ));
                   }
                 });
 
-                await mapController?.moveCamera(CameraUpdate.newCameraPosition(
-                  CameraPosition(
-                    target: getCentralPoint([
-                      Point(
-                        latitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][0],
-                        longitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][1]
-                      ),
-                      Point(
-                        latitude: TurboGoBloc.orderController.newOrder.whither!['coordinates'][0],
-                        longitude: TurboGoBloc.orderController.newOrder.whither!['coordinates'][1]
+                if (
+                  _order.last!.from != null && _order.last!.whither != null &&
+                  _order.last!.from!['coordinates'] != null && _order.last!.whither!['coordinates'] != null
+                ) {
+                  await mapController!.moveCamera(CameraUpdate.newCameraPosition(
+                      CameraPosition(
+                          target: getCentralPoint([
+                            Point(
+                                latitude: _order.last!.from!['coordinates'][0],
+                                longitude: _order.last!.from!['coordinates'][1]
+                            ),
+                            Point(
+                                latitude: _order.last!.whither!['coordinates'][0],
+                                longitude: _order.last!.whither!['coordinates'][1]
+                            )
+                          ]),
+                          zoom: getZoomLevel([
+                            _order.last!.from!['coordinates'],
+                            _order.last!.whither!['coordinates']
+                          ]) - 1
                       )
-                    ]),
-                    zoom: getZoomLevel([
-                      TurboGoBloc.orderController.newOrder.from!['coordinates'],
-                      TurboGoBloc.orderController.newOrder.whither!['coordinates']
-                    ]) - 1
-                  )
-                ), animation: const MapAnimation(type: MapAnimationType.smooth, duration: 1));
-              break;
+                  ), animation: const MapAnimation(type: MapAnimationType.smooth, duration: 1));
+                }
+                break;
               case TurboGoSearchState:
                 setState(() {
                   disableGestures();
                 });
-                await mapController?.moveCamera(CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                        target: Point(
-                            latitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][0],
-                            longitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][1]
-                        ),
-                        zoom: _defaultZoomLevel
-                    )
-                ));
+                if (_order.last!.from != null && _order.last!.from!['coordinates'] != null) {
+                  //setState(() {
+                  //  disableGestures();
+                  //});
+
+                  await mapController!.moveCamera(CameraUpdate.newCameraPosition(
+                      CameraPosition(
+                          target: Point(
+                              latitude: _order.last!.from!['coordinates'][0],
+                              longitude: _order.last!.from!['coordinates'][1]
+                          ),
+                          zoom: _defaultZoomLevel
+                      )
+                  ));
+                }
               break;
               case TurboGoDriverState:
                 setState(() {
                   disableGestures();
                 });
-                /*await mapController?.moveCamera(CameraUpdate.newCameraPosition(
-                    CameraPosition(
-                        target: getCentralPoint([
-                          Point(
-                              latitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][0],
-                              longitude: TurboGoBloc.orderController.newOrder.from!['coordinates'][1]
-                          ),
-                          
-                        ]),
-                        zoom: _defaultZoomLevel
-                    )
-                ));*/
+                
+                DriversOnlineModel? driver = _driversOnline.getById(_order.last!.driverId!);
+                if (
+                  _order.last!.from != null && _order.last!.from!['coordinates'] != null &&
+                  driver != null && driver.location != null
+                ) {
+                  //setState(() {
+                  //  disableGestures();
+                  //});
+
+                  await mapController!.moveCamera(CameraUpdate.newCameraPosition(
+                      CameraPosition(
+                          target: getCentralPoint([
+                            Point(
+                                latitude: _order.last!.from!['coordinates'][0],
+                                longitude: _order.last!.from!['coordinates'][1]
+                            ),
+                            Point(
+                                latitude: driver.location!['coordinates'][0],
+                                longitude: driver.location!['coordinates'][1]
+                            )
+                          ]),
+                          zoom: getZoomLevel([
+                            _order.last!.from!['coordinates'],
+                            driver.location!['coordinates']
+                          ]) - 1
+                      )
+                  ));
+                }
                 break;
               default:
               //onCameraPositionChanged = null;

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 part 'driver_model.g.dart';
@@ -28,6 +29,11 @@ class DriverModel {
   String createdAt;
   @HiveField(11)
   String updatedAt;
+  @HiveField(12)
+  String? avatar;
+
+  static const Color defaultCarColor = Colors.white;
+  List regNumberCar = [];
 
   DriverModel(
       this.id,
@@ -40,7 +46,43 @@ class DriverModel {
       this.rating,
       this.activity,
       this.balance,
+      this.avatar,
       this.createdAt,
       this.updatedAt
-  );
+  ) {
+    fetchCarRegNumber();
+  }
+
+  Color determineCarColor() {
+    if (car['color'] != null) {
+      String color = car['color'];
+      if (color.indexOf('0x') == 0) {
+        return Color(int.parse(color));
+      }
+
+      if (color.contains(',')) {
+        List rgbo = color.split(',');
+        if (rgbo.length < 3) return defaultCarColor;
+        //if (rgbo.length == 3) {
+        //  rgbo.add(1.0);
+        //}
+        return Color.fromRGBO(int.parse(rgbo[0]), int.parse(rgbo[1]), int.parse(rgbo[2]), /*rgbo[3]*/1.0);
+      }
+      //if (isset string in Colors properties)
+    }
+
+    return defaultCarColor;
+  }
+
+  List fetchCarRegNumber () {
+    String _regNumberCar = car['regNumber'] as String;
+    regNumberCar.addAll([
+      _regNumberCar.substring(0, 1),
+      _regNumberCar.substring(1, 4),
+      _regNumberCar.substring(4, 6),
+      _regNumberCar.substring(6, _regNumberCar.length),
+    ]);
+
+    return regNumberCar;
+  }
 }

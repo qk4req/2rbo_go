@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:turbo_go/controllers/order_controller.dart';
 
 
 
@@ -11,14 +12,15 @@ import '/bloc/turbo_go_event.dart';
 import '/models/order_model.dart';
 
 class PointsSheet extends StatefulWidget {
-  LocationType focus;
-  PointsSheet({Key? key, required this.focus}) : super(key: key);
+  final LocationType focus;
+  const PointsSheet({Key? key, required this.focus}) : super(key: key);
 
   @override
   _PointsSheetState createState() => _PointsSheetState();
 }
 
 class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin<PointsSheet> {
+  final OrderController _order = TurboGoBloc.orderController;
   final _startPointKey = GlobalKey<FormBuilderFieldState>();
   final _endPointKey = GlobalKey<FormBuilderFieldState>();
 
@@ -36,16 +38,10 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
     _focus = widget.focus;
     super.initState();
     controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
-    /*animation = CurvedAnimation(
-        parent: controller,
-        curve: curve
-    );*/
     animation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(controller);
-    WidgetsBinding.instance.addPostFrameCallback((duration) {
+    WidgetsBinding.instance!.addPostFrameCallback((duration) {
       controller.forward();
     });
-
-
   }
 
   @override
@@ -108,9 +104,9 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                     child: Column(
                                       children: [
                                         ValueListenableBuilder(
-                                            valueListenable: TurboGoBloc.orderController.repo.listenable(keys: [TurboGoBloc.orderController.newOrderKey]),
+                                            valueListenable: _order.repo.listenable(keys: [_order.newOrderKey]),
                                             builder: (ctx, Box<OrderModel> box, wid) {
-                                              OrderModel newOrder = box.get(TurboGoBloc.orderController.newOrderKey)!;
+                                              OrderModel newOrder = box.get(_order.newOrderKey)!;
 
                                               return FormBuilderTextField(
                                                 autofocus: (_focus == LocationType.start),
@@ -153,9 +149,9 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                           color: Colors.black38,
                                         ),
                                         ValueListenableBuilder(
-                                            valueListenable: TurboGoBloc.orderController.repo.listenable(keys: [TurboGoBloc.orderController.newOrderKey]),
+                                            valueListenable: _order.repo.listenable(keys: [_order.newOrderKey]),
                                             builder: (ctx, Box<OrderModel> box, wid) {
-                                              OrderModel newOrder = box.get(TurboGoBloc.orderController.newOrderKey)!;
+                                              OrderModel newOrder = box.get(_order.newOrderKey)!;
 
                                               return Row(
                                                 children: [

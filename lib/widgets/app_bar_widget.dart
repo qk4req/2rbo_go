@@ -4,6 +4,7 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:turbo_go/bloc/turbo_go_event.dart';
+import 'package:turbo_go/controllers/order_controller.dart';
 import 'package:turbo_go/models/order_model.dart';
 
 
@@ -19,6 +20,7 @@ class AppBarWidget extends StatefulWidget {
 }
 
 class _AppBarWidgetState extends State<AppBarWidget> {
+  final OrderController _order = TurboGoBloc.orderController;
   final _startPointKey = GlobalKey<FormBuilderFieldState>();
   final _endPointKey = GlobalKey<FormBuilderFieldState>();
 
@@ -43,7 +45,7 @@ class _AppBarWidgetState extends State<AppBarWidget> {
                                 color: Colors.black38,
                                 spreadRadius: 3,
                                 blurRadius: 5,
-                                offset: Offset(0, 2), // changes position of shadow
+                                offset: Offset(0, 2),
                               ),
                             ],
                           ),
@@ -75,9 +77,9 @@ class _AppBarWidgetState extends State<AppBarWidget> {
                                           ),
                                         ),
                                         ValueListenableBuilder(
-                                            valueListenable: TurboGoBloc.orderController.repo.listenable(keys: [TurboGoBloc.orderController.newOrderKey]),
+                                            valueListenable: _order.repo.listenable(keys: [_order.newOrderKey]),
                                             builder: (BuildContext ctx, Box bx, Widget? wid) {
-                                              OrderModel newOrder = bx.get(TurboGoBloc.orderController.newOrderKey)!;
+                                              OrderModel newOrder = bx.get(_order.newOrderKey)!;
 
                                               return //newOrder.from != null && newOrder.from!.isNotEmpty
                                               //?

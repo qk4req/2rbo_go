@@ -14,7 +14,7 @@ class DriversOnlineController {
     return repo.containsKey(driver['driverId']);
   }
 
-  void update(Map driver, [bool sync = false, FutureOr<dynamic> Function()? onSaved]) {
+  void update(Map driver, [/*bool sync = true, */FutureOr<dynamic> Function()? onSaved]) {
     //if (contains(driver)) {
       DriversOnlineModel d = repo.get(driver['driverId'])!;
 
@@ -31,7 +31,7 @@ class DriversOnlineController {
     //}
   }
 
-  void create(Map driver, [bool sync = false]) {
+  void create(Map driver/*, [bool sync = true]*/) {
     //if (!contains(driver)) {
       DriversOnlineModel d = DriversOnlineModel(
         driver['driverId'],

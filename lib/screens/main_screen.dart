@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:keyboard_service/keyboard_service.dart';
+import 'package:turbo_go/widgets/pages/error_page.dart';
+import 'package:turbo_go/widgets/pages/loading_page.dart';
+import 'package:turbo_go/widgets/pages/main_page.dart';
+import 'package:turbo_go/widgets/pages/reg_page.dart';
 
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_state.dart';
-import '/widgets/map_widget.dart';
-import '/widgets/app_bar_widget.dart';
-import '/widgets/bottom_sheet_widget.dart';
-import '/widgets/navigation_bar_widget.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -17,27 +17,57 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen>{
+  int _state = 0;
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TurboGoBloc, TurboGoState>(builder: (BuildContext ctx, TurboGoState state) {
-      if (state is TurboGoConnectedState) {
-        return
-          KeyboardAutoDismiss(
-            scaffold: Scaffold(
-              resizeToAvoidBottomInset: false,
-                body: Stack(
-                  alignment: AlignmentDirectional.bottomCenter,
-                  children: const <Widget>[
-                    MapWidget(),
-                    AppBarWidget(),
-                    BottomSheetWidget(),
-                    NavigationBarWidget()
-                  ],
-                )
-            ),
-          );
-      }
-      return Container();
-    });
+    return BlocListener<TurboGoBloc, TurboGoState>(
+      listener: (BuildContext ctx, TurboGoState state) {
+        if (state is TurboGoConnectedState) {
+          setState(() {
+            _state = 1;
+          });
+        }
+
+        if (state is TurboGoRegState) {
+          setState(() {
+            _state = 2;
+          });
+        }
+
+        if (state is TurboGoNotConnectedState) {
+          setState(() {
+            _state = 3;
+          });
+        }
+      },
+      child: KeyboardAutoDismiss(
+        scaffold: Scaffold(
+            resizeToAvoidBottomInset: false,
+            body: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                        begin: const Offset(1.5, 0), end: Offset.zero
+                    ).animate(animation),
+                    child: FadeTransition(
+                      opacity: Tween<double>(
+                          begin: 0.0, end: 1.0
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child:
+                _state == 0 ? const LoadingPage() :
+                _state == 1 ? const MainPage() :
+                _state == 2 ? const RegPage() :
+                _state == 3 ? const ErrorPage() :
+                null
+            )
+        ),
+      )
+    );
   }
 }

@@ -47,6 +47,7 @@ class DriverController {
         driver['rating'] != null ? (driver['rating'] as num).toDouble() : 5.0,
         driver['activity'] ?? 0,
         driver['balance'] != null ? (driver['balance'] as num).toDouble() : 0.0,
+        driver['avatar'],
         driver['createdAt'] ?? _timestamp.create().toString(),
         driver['updatedAt'] ?? _timestamp.create().toString()
     );
@@ -62,12 +63,13 @@ class DriverController {
       d.lastName = driver['lastName'] ?? d.lastName;
       d.firstName = driver['firstName'] ?? d.firstName;
       d.middleName = driver['middleName'] ?? d.middleName;
-      d.phoneNumber = driver['status'] ?? d.phoneNumber;
+      d.phoneNumber = driver['phoneNumber'] ?? d.phoneNumber;
       d.car = driver['car'] ?? d.car;
       d.status = driver['status'] ?? d.status;
       d.rating = driver['rating'] != null ? (driver['rating'] as num).toDouble() : d.rating;
       d.activity = driver['activity'] ?? d.activity;
       d.balance = driver['balance'] != null ? (driver['balance'] as num).toDouble() : d.balance;
+      d.avatar = driver['avatar'] ?? d.avatar;
       d.createdAt = driver['createdAt'] ?? d.createdAt;
       d.updatedAt = driver['updatedAt'] ?? _timestamp.create().toString();
 

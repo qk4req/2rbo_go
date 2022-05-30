@@ -19,7 +19,7 @@ class OrderModelAdapter extends TypeAdapter<OrderModel> {
     return OrderModel(
       fields[0] as String,
       fields[1] as int?,
-      fields[2] as int?,
+      fields[2] as String?,
       fields[3] as int?,
       fields[13] as int?,
       fields[4] as String?,

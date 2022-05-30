@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:hive/hive.dart';
 import 'package:socket_io_client/socket_io_client.dart';
+import 'package:turbo_go/controllers/client_controller.dart';
+import 'package:turbo_go/controllers/clients_online_controller.dart';
 import 'package:uuid/uuid.dart';
 
 
@@ -11,13 +14,15 @@ import '/models/order_model.dart';
 
 class OrderController {
   final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final ClientsOnlineController _clientsOnline = TurboGoBloc.clientsOnlineController;
   final Socket _socket = TurboGoBloc.socket;
   late String newOrderKey;
   late OrderModel newOrder;
+  OrderModel? last;
   Box<OrderModel> repo = Hive.box('orders');
 
   OrderController() {
-    createNewOrder();
+    //createNewOrder();
     /*if (repo.isNotEmpty) {
       OrderModel l = repo.values.last;
       last = OrderModel(
@@ -45,7 +50,7 @@ class OrderController {
     return order['updatedAt'] == repo.get(order['uuid'])?.updatedAt;
   }
 
-  OrderModel create(Map order, [bool sync = false]) {
+  OrderModel create(Map order, [bool sync = true]) {
     OrderModel o = OrderModel(
         order['uuid'],
         order['driverId'],
@@ -55,8 +60,8 @@ class OrderController {
         order['status'] ?? 'filled',
         order['totalTime'] ?? 0,
         order['totalSum'] != null ? (order['totalSum'] as num).toDouble() : 0,
-        order['from'] != null ? jsonDecode(order['from']) : null,
-        order['whither'] != null ? jsonDecode(order['whither']) : null,
+        order['from'] != null ? (order['from'] is String ? jsonDecode(order['from']) : order['from']) : null,
+        order['whither'] != null ? (order['whither'] is String ? jsonDecode(order['whither']) : order['whither']) : null,
         order['comment'],
         order['startedAt'],
         order['createdAt'] ?? _timestamp.create().toString(),
@@ -89,7 +94,7 @@ class OrderController {
     return o;
   }
 
-  OrderModel update(Map order, [bool sync = false]) {
+  OrderModel update(Map order, [bool sync = true, FutureOr<dynamic> Function()? onSaved]) {
     OrderModel o = repo.get(order['uuid'])!;
 
     o.driverId = order['driverId'] ?? o.driverId;
@@ -106,7 +111,9 @@ class OrderController {
     o.createdAt = order['createdAt'] ?? o.createdAt;
     o.updatedAt = order['updatedAt'] ?? _timestamp.create().toString();
 
-    repo.put(o.uuid, o);
+    repo.put(o.uuid, o).then((value) async {
+      if (onSaved != null) await onSaved();
+    });
 
     if (sync) {
       _socket.emit('orders.update', [
@@ -137,11 +144,15 @@ class OrderController {
   void createNewOrder([bool sync = true]) {
     newOrderKey = const Uuid().v4();
     newOrder = create({
-      'uuid': newOrderKey
+      'uuid': newOrderKey,
+      'from': {
+        'type': 'Point',
+        'coordinates': [_clientsOnline.clientsOnlineModel?.location?['coordinates'][0], _clientsOnline.clientsOnlineModel?.location?['coordinates'][1]]
+      }
     }, sync);
   }
   
-  void updateNewOrder(Map order, [bool sync = true]) {
+  void updateNewOrder(Map order, [bool sync = true, FutureOr<dynamic> Function()? onSaved]) {
     //if (repo.containsKey(newOrderKey)) {
       newOrder = update({
         'uuid': newOrderKey,
@@ -158,7 +169,56 @@ class OrderController {
         'startedAt': order['startedAt'],
         'createdAt': order['createdAt'],
         'updatedAt': order['updatedAt']
-      }, sync);
+      }, sync, onSaved);
     //}
+  }
+
+  OrderModel? findLast() {
+    //OrderModel? last;
+    if (repo.isEmpty) return null;
+
+    List m = repo.values.where((OrderModel o) {
+      return (['confirmed', 'active', 'pause', 'wait'].contains(o.status));
+    }).toList();
+
+    if (m.isNotEmpty) {
+      m.sort((a, b) {
+        DateTime f = DateTime.parse(a.createdAt);
+        DateTime s = DateTime.parse(b.createdAt);
+
+        return f.compareTo(s);
+      });
+      last = m.last;
+    } else {
+      List n = repo.values.where((OrderModel o) {
+        return o.status == 'refused';
+      }).toList();
+
+      if (n.isNotEmpty) {
+        n.sort((a, b) {
+          DateTime f = DateTime.parse(a.createdAt);
+          DateTime s = DateTime.parse(b.createdAt);
+
+          return f.compareTo(s);
+        });
+        last = n.last;
+      } else {
+        List n = repo.values.where((OrderModel o) {
+          return o.status == 'filled';
+        }).toList();
+
+        if (n.isNotEmpty) {
+          n.sort((a, b) {
+            DateTime f = DateTime.parse(a.createdAt);
+            DateTime s = DateTime.parse(b.createdAt);
+
+            return f.compareTo(s);
+          });
+          last = n.last;
+        }
+      }
+    }
+
+    return last;
   }
 }
