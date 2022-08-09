@@ -10,14 +10,14 @@ import 'sheets/chat_sheet.dart';
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_state.dart';
 
-class BottomSheetWidget extends StatefulWidget {
-  const BottomSheetWidget({Key? key}) : super(key: key);
+class BottomSheetFragment extends StatefulWidget {
+  const BottomSheetFragment({Key? key}) : super(key: key);
 
   @override
-  _BottomSheetWidgetState createState() => _BottomSheetWidgetState();
+  _BottomSheetFragmentState createState() => _BottomSheetFragmentState();
 }
 
-class _BottomSheetWidgetState extends State<BottomSheetWidget>/* with TickerProviderStateMixin<BottomSheetWidget>*/{
+class _BottomSheetFragmentState extends State<BottomSheetFragment>/* with TickerProviderStateMixin<BottomSheetWidget>*/{
   /* Animation<double> animation;
   late AnimationController controller;
   final Curve curve = Curves.easeIn;*/
@@ -82,10 +82,10 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>/* with TickerProv
 
         if (state is TurboGoPointsState) {
           //await controller.animateTo(state is TurboGoExtendedPointsState ? 0.8 : 0.42, curve: curve, duration: const Duration(milliseconds: 200));
+          _focus = state.type;
 
           setState(() {
             _state = 1;
-            _focus = state.type;
           });
         }
 
@@ -126,7 +126,7 @@ class _BottomSheetWidgetState extends State<BottomSheetWidget>/* with TickerProv
             );
           },
           child:
-          _state == 1 ? PointsSheet(focus: _focus) :
+          _state == 1 ? PointsSheet(key: UniqueKey(), focus: _focus) :
           _state == 2 ? const TariffsSheet() :
           _state == 3 ? const DriverSheet() :
           _state == 4 ? const ChatSheet() :

@@ -1,56 +1,67 @@
-import 'package:equatable/equatable.dart';
-import 'package:turbo_go/bloc/turbo_go_bloc.dart';
-import 'package:turbo_go/models/driver_model.dart';
-import 'package:turbo_go/models/order_model.dart';
+import 'package:flutter/material.dart';
+import 'package:version/version.dart';
 
-abstract class TurboGoState extends Equatable {
+abstract class TurboGoState extends ValueNotifier/* extends Equatable*/ {
+  TurboGoState(value) : super(value);
 }
 
 class TurboGoInitState extends TurboGoState {
-  @override
-  List<Object> get props => [];
+  TurboGoInitState() : super(null);
+  //@override
+  //List<Object> get props => [];
 }
 
 class TurboGoConnectedState extends TurboGoState {
-  @override
-  List<Object?> get props => [];
+  TurboGoConnectedState(value) : super(null);
+  //@override
+  //List<Object?> get props => [];
 }
 
 class TurboGoNotConnectedState extends TurboGoState {
-  @override
-  List<Object?> get props => [];
+  TurboGoNotConnectedState() : super(null);
+  //@override
+  //List<Object?> get props => [];
+}
+
+class TurboGoNotSupportedState extends TurboGoState {
+  final Version current;
+  final Version required;
+  final List? releaseNotes;
+  final String upgradeUrl;
+
+  TurboGoNotSupportedState(
+      this.current, this.required, this.releaseNotes, this.upgradeUrl
+  ) : super(null);
 }
 
 class TurboGoRegState extends TurboGoState {
-  @override
-  List<Object?> get props => [];
+  TurboGoRegState() : super(null);
+  //@override
+  //List<Object?> get props => [];
 }
-
-
 
 class TurboGoLocationHasChangedState extends TurboGoConnectedState {
   final TurboGoState prevState;
 
-  TurboGoLocationHasChangedState(this.prevState);
+  TurboGoLocationHasChangedState(this.prevState) : super(null);
 }
-
-//class TurboGoLocationHasNotChangedState extends TurboGoConnectedState {
-//}
 
 class TurboGoHomeState extends TurboGoConnectedState {
   bool reset = true;
+  //final bool reset;
 
   TurboGoHomeState(
       [this.reset = true]
-  );
+  ) : super(null);
 }
 
 class TurboGoPointsState extends TurboGoConnectedState {
   LocationType type = LocationType.end;
+  //final LocationType type;
 
   TurboGoPointsState(
       [this.type = LocationType.end]
-  );
+  ) : super(null);
 }
 
 enum LocationType {
@@ -58,21 +69,34 @@ enum LocationType {
   end
 }
 
-class TurboGoTariffsState extends TurboGoConnectedState {}
+class TurboGoTariffsState extends TurboGoConnectedState {
+  TurboGoTariffsState() : super(null);
+}
 
-class TurboGoSearchState extends TurboGoConnectedState {}
+class TurboGoSearchState extends TurboGoConnectedState {
+  late bool fromReg;
+
+  TurboGoSearchState(
+    a, [bool b = false]
+      ) : super(a) {
+    value = a;
+    fromReg = b;
+  }
+}
 
 class TurboGoDriverState extends TurboGoConnectedState {
   //late final OrderModel order;
   //late final DriverModel driver;
 
-  TurboGoDriverState() {
+  TurboGoDriverState() : super(null) {
     //order = TurboGoBloc.orderController.last!;
     //driver = TurboGoBloc.driverController.getById(order.driverId!)!;
   }
 }
 
-class TurboGoChatState extends TurboGoConnectedState {}
+class TurboGoChatState extends TurboGoConnectedState {
+  TurboGoChatState() : super(null);
+}
 
 /*
 class TurboNotAuthState extends TurboState {

@@ -48,6 +48,7 @@ class DriverController {
         driver['activity'] ?? 0,
         driver['balance'] != null ? (driver['balance'] as num).toDouble() : 0.0,
         driver['avatar'],
+        driver['licenseDate'],
         driver['createdAt'] ?? _timestamp.create().toString(),
         driver['updatedAt'] ?? _timestamp.create().toString()
     );
@@ -70,6 +71,7 @@ class DriverController {
       d.activity = driver['activity'] ?? d.activity;
       d.balance = driver['balance'] != null ? (driver['balance'] as num).toDouble() : d.balance;
       d.avatar = driver['avatar'] ?? d.avatar;
+      d.licenseDate = driver['licenseDate'] ?? d.licenseDate;
       d.createdAt = driver['createdAt'] ?? d.createdAt;
       d.updatedAt = driver['updatedAt'] ?? _timestamp.create().toString();
 
@@ -79,20 +81,5 @@ class DriverController {
         }
       });
     }
-  }
-
-  bool isOnline (int driverId) {
-    DriversOnlineModel? a = _driversOnline.getById(driverId);
-    DriverModel? b = getById(driverId);
-
-    if (a != null && b != null) {
-      return (
-          a.location != null && a.direction != null &&
-          DateTime.parse(a.updatedAt).isAfter(_timestamp.create().subtract(const Duration(seconds: 30))) &&
-          (b.balance > (b.car['tariff']['baseCost'] * b.car['tariff']['commission'])) &&
-          b.status == 'active'
-      );
-    }
-    return false;
   }
 }

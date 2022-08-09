@@ -32,7 +32,6 @@ class DriversOnlineModel {
       );
 
   bool isOnline() {
-
     return (
         location != null && direction != null &&
         DateTime.parse(updatedAt).isAfter(_timestamp.create().subtract(const Duration(seconds: 30)))

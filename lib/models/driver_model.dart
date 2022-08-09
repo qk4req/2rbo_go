@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:turbo_go/bloc/turbo_go_bloc.dart';
+import 'package:turbo_go/controllers/timestamp_controller.dart';
 
 part 'driver_model.g.dart';
 
 @HiveType(typeId: 4)
 class DriverModel {
+  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+
   @HiveField(0)
   int id;
   @HiveField(1)
@@ -31,9 +35,12 @@ class DriverModel {
   String updatedAt;
   @HiveField(12)
   String? avatar;
+  @HiveField(13)
+  String licenseDate;
 
   static const Color defaultCarColor = Colors.white;
   List regNumberCar = [];
+  Map experience = {};
 
   DriverModel(
       this.id,
@@ -47,10 +54,12 @@ class DriverModel {
       this.activity,
       this.balance,
       this.avatar,
+      this.licenseDate,
       this.createdAt,
       this.updatedAt
   ) {
     fetchCarRegNumber();
+    fetchExperience();
   }
 
   Color determineCarColor() {
@@ -84,5 +93,34 @@ class DriverModel {
     ]);
 
     return regNumberCar;
+  }
+
+  Map fetchExperience() {
+    DateTime now = _timestamp.create();
+    DateTime ld = DateTime.parse(licenseDate);
+    experience['years'] = (now.difference(ld).inDays / 365).round();
+    List words = ['год', 'года', 'лет'];
+
+    int n = experience['years'] % 100;
+    if (n > 19) {
+      n = n % 10;
+    }
+
+    switch (n) {
+      case 1:
+        experience['ending'] = words[0];
+        break;
+
+      case 2:
+      case 3:
+      case 4:
+      experience['ending'] = words[1];
+        break;
+
+      default:
+        experience['ending'] = words[2];
+    }
+
+    return experience;
   }
 }

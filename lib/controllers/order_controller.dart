@@ -177,31 +177,31 @@ class OrderController {
     //OrderModel? last;
     if (repo.isEmpty) return null;
 
-    List m = repo.values.where((OrderModel o) {
-      return (['confirmed', 'active', 'pause', 'wait'].contains(o.status));
+    List n = repo.values.where((OrderModel o) {
+      return o.status == 'refused';
     }).toList();
 
-    if (m.isNotEmpty) {
-      m.sort((a, b) {
+    if (n.isNotEmpty) {
+      n.sort((a, b) {
         DateTime f = DateTime.parse(a.createdAt);
         DateTime s = DateTime.parse(b.createdAt);
 
-        return f.compareTo(s);
+        return s.compareTo(f);
       });
-      last = m.last;
+      last = n.last;
     } else {
-      List n = repo.values.where((OrderModel o) {
-        return o.status == 'refused';
+      List m = repo.values.where((OrderModel o) {
+        return (['confirmed', 'active', 'pause', 'wait'].contains(o.status));
       }).toList();
 
-      if (n.isNotEmpty) {
-        n.sort((a, b) {
+      if (m.isNotEmpty) {
+        m.sort((a, b) {
           DateTime f = DateTime.parse(a.createdAt);
           DateTime s = DateTime.parse(b.createdAt);
 
-          return f.compareTo(s);
+          return s.compareTo(f);
         });
-        last = n.last;
+        last = m.last;
       } else {
         List n = repo.values.where((OrderModel o) {
           return o.status == 'filled';

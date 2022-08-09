@@ -15,14 +15,14 @@ import '/controllers/drivers_online_controller.dart';
 import '/models/order_model.dart';
 import '/models/drivers_online_model.dart';
 
-class NavigationBarWidget extends StatefulWidget {
-  const NavigationBarWidget({Key? key}) : super(key: key);
+class NavigationBarFragment extends StatefulWidget {
+  const NavigationBarFragment({Key? key}) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => _NavigationBarWidgetState();
+  State<StatefulWidget> createState() => _NavigationBarFragmentState();
 }
 
-class _NavigationBarWidgetState extends State<NavigationBarWidget> {
+class _NavigationBarFragmentState extends State<NavigationBarFragment> {
   final DriverController _driver = TurboGoBloc.driverController;
   final DriversOnlineController _driversOnline = TurboGoBloc.driversOnlineController;
   final OrderController _order = TurboGoBloc.orderController;
@@ -33,17 +33,51 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
       margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 5),
       child: BlocBuilder<TurboGoBloc, TurboGoState>(
         builder: (BuildContext ctx, TurboGoState state) {
+          if (state is TurboGoNotSupportedState) {
+            return _button(
+                Center(
+                    child: Text(
+                      'Обновить',
+                      style: Theme.of(context).textTheme.subtitle1,
+                    )
+                ),
+                    () {
+                  BlocProvider.of<TurboGoBloc>(context).add(TurboGoUpgradeAppEvent(state.upgradeUrl));
+                },
+                false
+            );
+          }
+
+          if (state is TurboGoNotConnectedState) {
+            return _button(
+                Center(
+                    child: Text(
+                      'Позвонить',
+                      style: Theme.of(context).textTheme.subtitle1,
+                    )
+                ),
+                () async {
+                  await FlutterPhoneDirectCaller.callNumber(TurboGoBloc.DISPATCHER_PHONE_NUMBER);
+                },
+                false
+            );
+          }
+
           return ValueListenableBuilder(
               valueListenable: TurboGoBloc.orderController.repo.listenable(keys: [_order.last?.uuid]),
               builder: (ctx, Box<OrderModel> box, Widget? wid) {
                 OrderModel? last = box.get(_order.last?.uuid);
+                List? fromCoordinates = last?.from?['coordinates'];
 
-                return last != null ? Container(
+                return Container(
                   child:
-                  last.from == null ?
-                  null :
+                  last != null &&
+                  fromCoordinates is List &&
+                  fromCoordinates.length == 2 &&
+                  fromCoordinates[0] is double &&
+                  fromCoordinates[1] is double ?
                   BlocBuilder<TurboGoBloc, TurboGoState>(
-                      builder: (ctx, state) {
+                      builder: (BuildContext ctx, TurboGoState state) {
                         if (
                         ![TurboGoLocationHasChangedState, TurboGoHomeState, TurboGoSearchState].contains(state.runtimeType)
                         ) {
@@ -56,7 +90,6 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
                                         fontSize: 18
                                     ),
                                   ),
-                                  true,
                                       () {
                                     BlocProvider.of<TurboGoBloc>(context).add(const TurboGoTariffsEvent());
                                   }
@@ -77,7 +110,6 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
                                                   fontSize: 18
                                               )
                                           ),
-                                          true,
                                               () {
                                             BlocProvider.of<TurboGoBloc>(context).add(TurboGoSearchEvent());
                                           }
@@ -91,6 +123,7 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
                                                   fontSize: 18
                                               )
                                           ),
+                                          null,
                                           false
                                       );
                                     }
@@ -115,7 +148,6 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
 
                                                   return ElevatedButton(
                                                     onPressed: () async {
-                                                      print(d);
                                                       await FlutterPhoneDirectCaller.callNumber(d.phoneNumber);
                                                     },
                                                     child: const Icon(
@@ -140,8 +172,9 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
                         }
                         return Container();
                       }
-                  ),
-                ) : Container();
+                  ) :
+                  null,
+                );
               }
           );
         },
@@ -152,24 +185,25 @@ class _NavigationBarWidgetState extends State<NavigationBarWidget> {
   Widget _button(
       Widget child,
       [
-        bool enabled = true,
-        void Function()? onPressed
+        //bool enabled = true,
+        void Function()? onPressed,
+        bool withArrow = true
       ]
   ) {
     return OutlinedButton(
       style: ButtonStyle(
-        splashFactory: enabled ? InkRipple.splashFactory : NoSplash.splashFactory,
+        splashFactory: onPressed == null ? InkRipple.splashFactory : NoSplash.splashFactory,
         shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0))),
         maximumSize: MaterialStateProperty.all(Size((MediaQuery.of(context).size.width * 0.8
         ), 60)),
         backgroundColor: MaterialStateProperty.all(Colors.black38),
       ),
-      onPressed: enabled ? onPressed : () {},
+      onPressed: onPressed ?? () {},
       child: Row(
         children: <Widget>[
           Expanded(child: child),
           Container(
-            child: enabled ? Row(
+            child: withArrow ? Row(
               children: [
                 Container(
                   color: Colors.black38,

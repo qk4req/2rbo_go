@@ -97,7 +97,7 @@ class _RegPageState extends State<RegPage> {
                       );
                     },
                     child:
-                      _phoneNumberValue != null && _phoneNumberValue!.isEmpty ?
+                      _phoneNumberValue == null || (_phoneNumberValue != null && _phoneNumberValue!.isEmpty) ?
                         const Text(
                           'Номер телефона нужен для связи с вами',
                           style: TextStyle(

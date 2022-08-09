@@ -15,7 +15,7 @@ class TimestampController {
   }
 
   determine() async {
-    _socket.on('VARS', (vars) {
+    _socket.on('_', (vars) {
       DateTime now = DateTime.now().toUtc();
       _serverOffset = now.difference(DateTime.parse(vars['datetime']));
     });
@@ -25,11 +25,15 @@ class TimestampController {
   DateTime create() {
     if (_serverOffset != null) {
       DateTime now = DateTime.now().toUtc();
-      if (_serverOffset!.isNegative) {
-        now.subtract(_serverOffset!);
-      } else {
+      //if (_serverOffset!.isNegative) {
+      //  now.subtract(_serverOffset!);
+      //} else {
+      //  now.add(_serverOffset!);
+      //}
+      if (_serverOffset != null) {
         now.add(_serverOffset!);
       }
+
       return(now);
     } else {
       DateTime now = DateTime.now().toUtc();

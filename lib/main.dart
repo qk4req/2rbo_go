@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:keyboard_service/keyboard_service.dart';
 import 'package:turbo_go/models/clients_online_model.dart';
 import 'bloc/turbo_go_bloc.dart';
 import 'bloc/turbo_go_event.dart';
@@ -49,18 +50,17 @@ class MyApp extends StatelessWidget {
 
     return BlocListener<TurboGoBloc, TurboGoState>(
     listener: (BuildContext ctx, state) {
-
     },
     child: MaterialApp(
           title: 'Turbo.Go',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
-            fontFamily: 'Oswald',
-            outlinedButtonTheme: OutlinedButtonThemeData(
-                style: OutlinedButton.styleFrom(
-                  primary: Colors.white
-                )
-            ),
+              fontFamily: 'Oswald',
+              outlinedButtonTheme: OutlinedButtonThemeData(
+                  style: OutlinedButton.styleFrom(
+                    primary: Colors.white
+                  )
+              ),
               textTheme: const TextTheme(
                   subtitle1: TextStyle(
                       fontSize: 16.0,
@@ -77,7 +77,7 @@ class MyApp extends StatelessWidget {
                   headline6: TextStyle(
                     fontSize: 18.0,
                     fontWeight: FontWeight.w500,
-                  )
+                  ),
               ).apply(
                   bodyColor: Colors.white,
                   displayColor: Colors.white

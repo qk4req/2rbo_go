@@ -23,6 +23,7 @@ class _DriverSheetState extends State<DriverSheet> with TickerProviderStateMixin
   late Animation<Offset> animation;
   late AnimationController controller;
   final Curve curve = Curves.easeIn;
+  //String? _avatar;
 
 
 
@@ -34,6 +35,12 @@ class _DriverSheetState extends State<DriverSheet> with TickerProviderStateMixin
     WidgetsBinding.instance!.addPostFrameCallback((duration) {
       controller.forward();
     });
+
+    /*_driver.repo.watch(
+      key: _order.last?.driverId
+    ).listen((event) {
+      if (_avatar != event.value['avatar']) _avatar = event.value['avatar'];
+    });*/
   }
 
   @override
@@ -54,9 +61,9 @@ class _DriverSheetState extends State<DriverSheet> with TickerProviderStateMixin
                 position: animation,
                 child: DraggableScrollableSheet(
                   expand: false,
-                  initialChildSize: 0.3,
-                  minChildSize: 0.3,
-                  maxChildSize: 0.3,
+                  initialChildSize: 0.35,
+                  minChildSize: 0.35,
+                  maxChildSize: 0.35,
                   builder: (BuildContext ctx, ScrollController scrollController) {
                     return ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
@@ -232,39 +239,63 @@ class _DriverSheetState extends State<DriverSheet> with TickerProviderStateMixin
                                                       Row(
                                                         children: [
                                                           Expanded(
-                                                              child: Container(
-                                                                margin: const EdgeInsets.only(right: 5),
-                                                                child: Text(
-                                                                  '${d.activity}',
-                                                                  textAlign: TextAlign.right,
-                                                                  style: Theme.of(context).textTheme.subtitle2
-                                                                )
+                                                              child: Column(
+                                                                children: [
+                                                                  Container(
+                                                                      margin: const EdgeInsets.only(left: 5),
+                                                                      child: Text(
+                                                                          '${d.rating}',
+                                                                          textAlign: TextAlign.left,
+                                                                          style: Theme.of(context).textTheme.subtitle2
+                                                                      )
+                                                                  ),
+                                                                  const Text(
+                                                                    'рейтинг',
+                                                                    style: TextStyle(
+                                                                        color: Colors.white38
+                                                                    ),
+                                                                  )
+                                                                ],
                                                               )
                                                           ),
-                                                          const Icon(
-                                                            Icons.bolt,
-                                                            color: Colors.blueAccent,
-                                                            size: 15,
-                                                          ),
-                                                          Container(
-                                                            height: 25,
-                                                            width: 2,
-                                                            color: Colors.black38,
-                                                            margin: const EdgeInsets.symmetric(horizontal: 10),
-                                                          ),
-                                                          const Icon(
-                                                            Icons.star,
-                                                            color: Colors.yellowAccent,
-                                                            size: 15,
+                                                          Expanded(
+                                                              child: Column(
+                                                                children: [
+                                                                  Container(
+                                                                      margin: const EdgeInsets.only(right: 5),
+                                                                      child: Text(
+                                                                          '${d.activity}',
+                                                                          textAlign: TextAlign.right,
+                                                                          style: Theme.of(context).textTheme.subtitle2
+                                                                      )
+                                                                  ),
+                                                                  const Text(
+                                                                    'активность',
+                                                                    style: TextStyle(
+                                                                      color: Colors.white38
+                                                                    ),
+                                                                  )
+                                                                ],
+                                                              )
                                                           ),
                                                           Expanded(
-                                                              child: Container(
-                                                                margin: const EdgeInsets.only(left: 5),
-                                                                child: Text(
-                                                                  '${d.rating}',
-                                                                  textAlign: TextAlign.left,
-                                                                  style: Theme.of(context).textTheme.subtitle2
-                                                                )
+                                                              child: Column(
+                                                                children: [
+                                                                  Container(
+                                                                      margin: const EdgeInsets.only(right: 5),
+                                                                      child: Text(
+                                                                          '${d.experience['years']} ${d.experience['ending']}',
+                                                                          textAlign: TextAlign.right,
+                                                                          style: Theme.of(context).textTheme.subtitle2
+                                                                      )
+                                                                  ),
+                                                                  const Text(
+                                                                    'стаж',
+                                                                    style: TextStyle(
+                                                                        color: Colors.white38
+                                                                    ),
+                                                                  )
+                                                                ],
                                                               )
                                                           )
                                                         ],
