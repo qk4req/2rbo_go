@@ -56,15 +56,15 @@ class TurboGoHomeState extends TurboGoConnectedState {
 }
 
 class TurboGoPointsState extends TurboGoConnectedState {
-  LocationType type = LocationType.end;
+  LocationTypes type = LocationTypes.end;
   //final LocationType type;
 
   TurboGoPointsState(
-      [this.type = LocationType.end]
+      [this.type = LocationTypes.end]
   ) : super(null);
 }
 
-enum LocationType {
+enum LocationTypes {
   start,
   end
 }

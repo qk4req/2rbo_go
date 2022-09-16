@@ -26,7 +26,7 @@ import '/models/order_model.dart';
 
 
 class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
-  static Version appVersion = Version.parse('1.0.0');
+  static Version APP_VERSION = Version.parse('1.0.0');
   static String DISPATCHER_PHONE_NUMBER = '+79678761243';
 
   static TimestampController? timestampController;
@@ -41,8 +41,8 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
   static FlashMessageController flashMessageController = FlashMessageController();
 
   //static const int API_RECONNECTION_DELAY = 1000;
-  static const String API_URL = 'http://185.119.58.157:3000';
-  static const String GEOCODER_URL = 'https://nominatim.openstreetmap.org';
+  static const String API_URL = 'http://185.119.58.157:3000';////'http://10.0.2.2:3000';
+  static const String GEOCODER_URL = 'https://nominatim.openstreetmap.org';//'http://92.255.107.194:8080';
 
   static io.Socket socket = io.io(
       '$API_URL/users',
@@ -138,8 +138,10 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
         TurboGoState prevState = (state as TurboGoLocationHasChangedState).prevState;
 
         if (prevState is TurboGoPointsState) {
+          geocoderController.clearPoints();
           orderController.updateNewOrder(
-            prevState.type == LocationType.start ? {'from': {}} : {'whither': {}},
+            prevState.type == LocationTypes.start ? {'from': null} : {'whither': null},
+            //prevState.type == LocationTypes.start ? {'from': {}} : {'whither': {}},
             false
           );
         }
@@ -184,7 +186,7 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
         }
 
         if (prevState is TurboGoPointsState) {
-          if (prevState.type == LocationType.start) {
+          if (prevState.type == LocationTypes.start) {
             /*orderController.updateNewOrder({
               'from': {
                 'type': 'Point',
@@ -249,16 +251,16 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
 
     if (event is TurboGoStartPointEvent) {
       if (state is TurboGoPointsState) {
-        (state as TurboGoPointsState).type = LocationType.start;
+        (state as TurboGoPointsState).type = LocationTypes.start;
       } else {
-        emit(TurboGoPointsState(LocationType.start));
+        emit(TurboGoPointsState(LocationTypes.start));
       }
     }
     if (event is TurboGoEndPointEvent) {
       if (state is TurboGoPointsState) {
-        (state as TurboGoPointsState).type = LocationType.end;
+        (state as TurboGoPointsState).type = LocationTypes.end;
       } else {
-        emit(TurboGoPointsState(LocationType.end));
+        emit(TurboGoPointsState(LocationTypes.end));
       }
     }
 
@@ -270,12 +272,18 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
     }
 
     if (event is TurboGoChangePointEvent) {
-      if (event.type == LocationType.start) {
-      }
-
-      if (event.type == LocationType.end) {
-
-      }
+      orderController.updateNewOrder({
+        event.type.name: {
+          'type': 'Point',
+          'coordinates': [event.point['lat'], event.point['lon']],
+          'desc': event.point['display_name']
+        }
+      });
+      if (
+        event.type == CoordinateTypes.whither &&
+        orderController.newOrder.from != null &&
+        orderController.newOrder.from!.isNotEmpty
+      ) add(const TurboGoTariffsEvent());
     }
 
     if (event is TurboGoHomeEvent) {
@@ -372,18 +380,36 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
           }
         });
 
-        socket.on('clientsOnline.read', (data) {
+        socket.on('clients.create', (data) {
           if (data['success']) {
-            List client = data['payload'];
-            if (client.isNotEmpty/* && !clientsOnlineController.compare(client.first)*/) {
-              clientsOnlineController.update(client.first);
-              if (client.first['client'] != null) {
-                clientController.update(client.first['client'], false);
-              }
-            } else {
+            Map client = data['payload'];
+
+            if (
+              client['uuid'] == clientController.clientModel.uuid &&
+              clientsOnlineController.clientsOnlineModel == null
+            ) {
               clientsOnlineController.create({
                 'clientId': clientController.clientModel.uuid
               });
+            }
+          }
+        });
+
+        socket.on('clientsOnline.read', (data) {
+          if (data['success']) {
+            List client = data['payload'];
+
+            if (client.isNotEmpty) {
+              //if (!clientController.compare(client.first)) {
+                clientsOnlineController.update(client.first, false);
+                if (
+                  client.first['client'] != null &&
+                  clientController.compare(client.first['client'])
+                ) {
+                  clientController.update(client.first['client'], false);
+                }
+              //}
+            } else {
               clientController.create();
             }
 
@@ -488,7 +514,7 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
         });
 
         Version minVer = Version.parse(data['apps']['go']['minVersion']);
-        if (appVersion >= minVer) {
+        if (APP_VERSION >= minVer) {
           socket.emit('clientsOnline.read', {
             'clientId': clientController.clientModel.uuid
           });
@@ -503,7 +529,7 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
           socket.emit('tariffs.read');
         } else {
           add(TurboGoNotSupportedEvent(
-            appVersion, minVer, data['apps']['go']['releaseNotes'], data['apps']['go']['upgradeUrl']
+            APP_VERSION, minVer, data['apps']['go']['releaseNotes'], data['apps']['go']['upgradeUrl']
           ));
         }
       });

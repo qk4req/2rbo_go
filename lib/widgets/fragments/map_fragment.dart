@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:turbo_go/controllers/clients_online_controller.dart';
 import 'package:turbo_go/controllers/order_controller.dart';
 import 'package:turbo_go/models/clients_online_model.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
@@ -88,11 +89,12 @@ double getZoomLevel(List route) {
 }
 
 class _MapFragmentState extends State<MapFragment>{
-  static ClientsOnlineModel? clientsOnlineModel = TurboGoBloc.clientsOnlineController.clientsOnlineModel;
+  static final ClientsOnlineController _clientsOnline = TurboGoBloc.clientsOnlineController;
   final DriverController _driver = TurboGoBloc.driverController;
   final DriversOnlineController _driversOnline = TurboGoBloc.driversOnlineController;
   final OrderController _order = TurboGoBloc.orderController;
   static YandexMapController? mapController;
+  static ClientsOnlineModel? clientsOnlineModel = TurboGoBloc.clientsOnlineController.clientsOnlineModel;
   late Widget _map;
   static final List<MapObject> _objects = [];
   static bool _zoomEnabled = true;
@@ -100,6 +102,7 @@ class _MapFragmentState extends State<MapFragment>{
   static bool _fastTapEnabled = true;
   static const double _defaultZoomLevel = 16.5;
   Timer? _timer;
+  static bool triggeredCameraPosition = false;
   late bool fromReg;
 
   static void enableGestures() {
@@ -130,12 +133,12 @@ class _MapFragmentState extends State<MapFragment>{
     //}).toList();
   }
 
-  static CameraPosition defaultCameraPosition(BuildContext ctx, [bool animated = false]) {
+  static CameraPosition _moveCamera(double lat, double lng, BuildContext context, [bool animated = false]) {
     CameraPosition position = CameraPosition(
-        zoom: clientsOnlineModel?.location == null ? 3 : _defaultZoomLevel,
+        zoom: _defaultZoomLevel,
         target: Point(
-            latitude: clientsOnlineModel?.location?['coordinates'][0],// ?? 61.698394,
-            longitude: clientsOnlineModel?.location?['coordinates'][1]// ?? 99.502091
+            latitude: lat,
+            longitude: lng
         )
     );
 
@@ -143,14 +146,35 @@ class _MapFragmentState extends State<MapFragment>{
         CameraUpdate.newCameraPosition(
             position
         ),
-      //animation: animated ? const MapAnimation(type: MapAnimationType.smooth, duration: 2) : null
+        animation: animated ? const MapAnimation(type: MapAnimationType.smooth, duration: 2) : null
     );
 
-    BlocProvider.of<TurboGoBloc>(ctx).add(TurboGoEndOfLocationChangeEvent(
-      Point(latitude: position.target.latitude, longitude: position.target.longitude)
+    BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
+        Point(latitude: position.target.latitude, longitude: position.target.longitude)
     ));
 
     return position;
+  }
+
+  static void defaultCameraPosition(BuildContext context, [bool animated = false]) {
+    if (clientsOnlineModel?.location == null) {
+      _clientsOnline.repo.watch().listen((event) {
+        if (!triggeredCameraPosition) {
+          ClientsOnlineModel c = event.value;
+
+          if (
+            c.location?['coordinates'] is List &&
+            c.location!['coordinates'][0] is double &&
+            c.location!['coordinates'][1] is double
+          ) {
+            _moveCamera(c.location!['coordinates'][0], c.location!['coordinates'][1], context, animated);
+            triggeredCameraPosition = true;
+          }
+        }
+      });
+    } else {
+      _moveCamera(clientsOnlineModel!.location!['coordinates'][0], clientsOnlineModel!.location!['coordinates'][1], context);
+    }
   }
 
   void cameraPositionCallback (CameraPosition position, CameraUpdateReason reason, finished) {
@@ -218,7 +242,7 @@ class _MapFragmentState extends State<MapFragment>{
     }*/
     fromReg = widget.fromReg;
     super.initState();
-    WidgetsBinding.instance!.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       Timer.periodic(const Duration(milliseconds: 1000), (_) {
         if (mounted) {
           setState(() {
@@ -234,6 +258,10 @@ class _MapFragmentState extends State<MapFragment>{
   @override
   Widget build(BuildContext context) {
     _map = YandexMap(
+        logoAlignment: const MapAlignment(horizontal: HorizontalAlignment.right, vertical: VerticalAlignment.bottom),
+        //poiLimit: 100,
+        modelsEnabled: false,
+        mode2DEnabled: true,
         mapObjects: _objects,
         onCameraPositionChanged: cameraPositionCallback,
         nightModeEnabled: true,
@@ -277,7 +305,6 @@ class _MapFragmentState extends State<MapFragment>{
             clearObjects();
             enableGestures();
             defaultCameraPosition(context);
-
           }
           //BlocProvider.of<TurboGoBloc>(context).add(TurboGoHomeEvent());
           /*BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
@@ -292,8 +319,8 @@ class _MapFragmentState extends State<MapFragment>{
     return Stack(children: [
       BlocListener<TurboGoBloc, TurboGoState>(
           listener: (BuildContext ctx, TurboGoState state) async {
-            List? fromCoordinates = _order.last?.from?['coordinates'];
-            List? whitherCoordinates = _order.last?.whither?['coordinates'];
+            List? fromCoordinates = _order.newOrder.from?['coordinates'];
+            List? whitherCoordinates = _order.newOrder.whither?['coordinates'];
             bool
             validFromCoordinates =
                 fromCoordinates is List && fromCoordinates.length == 2 &&
@@ -501,7 +528,7 @@ class _MapFragmentState extends State<MapFragment>{
                       }
 
                       if (prevState is TurboGoPointsState) {
-                        return Text(prevState.type == LocationType.start ? "Откуда вас забрать?" : "Куда вас отвезти?", style: const TextStyle(color: Colors.white));
+                        return Text(prevState.type == LocationTypes.start ? "Откуда вас забрать?" : "Куда вас отвезти?", style: const TextStyle(color: Colors.white));
                       }
                     }
 
@@ -510,7 +537,7 @@ class _MapFragmentState extends State<MapFragment>{
                     }
 
                     if (state is TurboGoPointsState) {
-                      return Text(state.type == LocationType.start ? "Заберём вас отсюда" : "Отвезём вас сюда", style: const TextStyle(color: Colors.white));
+                      return Text(state.type == LocationTypes.start ? "Заберём вас отсюда" : "Отвезём вас сюда", style: const TextStyle(color: Colors.white));
                     }
 
                     return Container();
@@ -533,12 +560,12 @@ class _MapFragmentState extends State<MapFragment>{
                         if (prevState is TurboGoPointsState) {
                           return ImageIcon(
                             AssetImage(
-                              (prevState.type == LocationType.start)
+                              (prevState.type == LocationTypes.start)
                                 ? 'lib/assets/images/start_point.png'
                                 : 'lib/assets/images/end_point.png'
                             ),
                             size: 35,
-                            color: (prevState.type == LocationType.start) ? Colors.white : Colors.redAccent
+                            color: (prevState.type == LocationTypes.start) ? Colors.white : Colors.redAccent
                           );
                         }
                       }
@@ -554,12 +581,12 @@ class _MapFragmentState extends State<MapFragment>{
                       if (state is TurboGoPointsState) {
                         return ImageIcon(
                           AssetImage(
-                            (state.type == LocationType.start)
+                            (state.type == LocationTypes.start)
                               ? 'lib/assets/images/start_point.png'
                               : 'lib/assets/images/end_point.png'
                           ),
                           size: 35,
-                          color: (state.type == LocationType.start) ? Colors.white : Colors.redAccent
+                          color: (state.type == LocationTypes.start) ? Colors.white : Colors.redAccent
                         );
                       }
 

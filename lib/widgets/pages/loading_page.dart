@@ -34,7 +34,7 @@ class _LoadingPageState extends State<LoadingPage> with TickerProviderStateMixin
     super.initState();
     controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
     animation = Tween<double>(begin: 0.6, end: 0.4).animate(controller);
-    WidgetsBinding.instance!.addPostFrameCallback((duration) {
+    WidgetsBinding.instance.addPostFrameCallback((duration) {
     });
   }
 

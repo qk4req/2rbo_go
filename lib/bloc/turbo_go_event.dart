@@ -1,22 +1,23 @@
 import 'package:equatable/equatable.dart';
 import 'package:turbo_go/bloc/turbo_go_state.dart';
+import 'package:turbo_go/controllers/geocoder_controller.dart';
 import 'package:version/version.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
-abstract class TurboGoEvent extends Equatable {
+abstract class TurboGoEvent {
   const TurboGoEvent();
 }
 
 class TurboGoStartEvent extends TurboGoEvent {
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 
 
 abstract class TurboGoMapEvent extends TurboGoEvent {
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 class TurboGoStartOfLocationChangeEvent extends TurboGoMapEvent {}
@@ -39,8 +40,8 @@ class TurboGoNotSupportedEvent extends TurboGoEvent {
       this.current, this.required, this.releaseNotes, this.upgradeUrl
   );
 
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 class TurboGoUpgradeAppEvent extends TurboGoEvent {
@@ -50,39 +51,43 @@ class TurboGoUpgradeAppEvent extends TurboGoEvent {
       this.upgradeUrl
   );
 
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 class TurboGoHomeEvent extends TurboGoEvent {
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 
 
 class TurboGoDriverEvent extends TurboGoEvent {
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 
 
 class TurboGoChangePointEvent extends TurboGoEvent {
-  LocationType type = LocationType.start;
+  Map point;
+  CoordinateTypes type = CoordinateTypes.whither;
 
-  @override
-  List<Object?> get props => [];
+  TurboGoChangePointEvent(
+      this.point, [this.type = CoordinateTypes.whither]
+  );
+  //@override
+  //List<Object?> get props => [];
 }
 
 class TurboGoStartPointEvent extends TurboGoEvent/* extends TurboGoChangePointEvent*/ {
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 class TurboGoEndPointEvent extends TurboGoEvent/* extends TurboGoChangePointEvent*/ {
-  @override
-  List<Object?> get props => [];
+  //@override
+  //List<Object?> get props => [];
 }
 
 
@@ -92,8 +97,8 @@ class TurboGoFindPointsEvent extends TurboGoEvent {
 
   const TurboGoFindPointsEvent(this.value);
 
-  @override
-  List<Object?> get props => [value];
+  //@override
+  //List<Object?> get props => [value];
 }
 
 /*class TurboGoAddPointEvent extends TurboGoEvent {
@@ -106,8 +111,8 @@ class TurboGoTariffsEvent extends TurboGoEvent {
 
   const TurboGoTariffsEvent([this.tariffId]);
 
-  @override
-  List<Object?> get props => [tariffId];
+  //@override
+  //List<Object?> get props => [tariffId];
 }
 
 
@@ -117,8 +122,8 @@ class TurboGoSearchEvent extends TurboGoEvent {
 
   /*const TurboGoSearchEvent([this.isFirst = true]);*/
 
-  @override
-  List<Object?> get props => [/*isFirst*/];
+  //@override
+  //List<Object?> get props => [/*isFirst*/];
 }
 
 
@@ -128,6 +133,6 @@ class TurboGoAddClientDataEvent extends TurboGoEvent {
 
   const TurboGoAddClientDataEvent(this.phoneNumber);
 
-  @override
-  List<Object?> get props => [phoneNumber];
+  //@override
+  //List<Object?> get props => [phoneNumber];
 }

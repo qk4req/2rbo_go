@@ -32,7 +32,7 @@ class _DriverSheetState extends State<DriverSheet> with TickerProviderStateMixin
     super.initState();
     controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
     animation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(controller);
-    WidgetsBinding.instance!.addPostFrameCallback((duration) {
+    WidgetsBinding.instance.addPostFrameCallback((duration) {
       controller.forward();
     });
 

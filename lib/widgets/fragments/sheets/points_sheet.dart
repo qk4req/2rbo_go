@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -13,7 +14,7 @@ import '/bloc/turbo_go_state.dart';
 import '/bloc/turbo_go_event.dart';
 
 class PointsSheet extends StatefulWidget {
-  final LocationType focus;
+  final LocationTypes focus;
   const PointsSheet({Key? key, required this.focus}) : super(key: key);
 
   @override
@@ -23,8 +24,8 @@ class PointsSheet extends StatefulWidget {
 class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin<PointsSheet> {
   static const int loadingDuration = 1500;
 
-  final OrderController _orderController = TurboGoBloc.orderController;
-  final GeocoderController _geocoderController = TurboGoBloc.geocoderController;
+  final OrderController _order = TurboGoBloc.orderController;
+  final GeocoderController _geocoder = TurboGoBloc.geocoderController;
   GlobalKey startPointKey = GlobalKey<FormBuilderFieldState>();
   GlobalKey endPointKey = GlobalKey<FormBuilderFieldState>();
 
@@ -32,13 +33,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
   late AnimationController controller;
   final Curve curve = Curves.easeIn;
 
-  late LocationType _focus;
+  late LocationTypes _focus;
   final Map<int, Timer?> _timers = {};
   Timer? _timer;
   bool loading = true;
   String? from;
   String? whither;
-  List? points;
+  //List? points;
   final List<FocusNode> _focusNodes = [FocusNode(), FocusNode()];
 
 
@@ -48,7 +49,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
     super.initState();
     controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
     animation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(controller);
-    WidgetsBinding.instance!.addPostFrameCallback((duration) {
+    WidgetsBinding.instance.addPostFrameCallback((duration) {
       controller.forward();
       _timer = Timer(const Duration(milliseconds: loadingDuration), () {
         if (mounted) {
@@ -57,13 +58,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
           });
         }
       });
-      if (_focus == LocationType.start) {
+      if (_focus == LocationTypes.start) {
         _focusNodes[0].requestFocus();
       } else {
         _focusNodes[1].requestFocus();
       }
     });
-    _geocoderController.addListener(() {
+    _geocoder.addListener(() {
       _timers[1] = Timer(const Duration(milliseconds: loadingDuration), () {
         if (mounted) {
           setState(() {
@@ -210,7 +211,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                             AnimatedSwitcher(
                                               duration: const Duration(milliseconds: 200),
                                               child:
-                                              loading && _focus == LocationType.start ?
+                                              loading && _focus == LocationTypes.start ?
                                               Shimmer.fromColors(
                                                   child: Container(
                                                     margin: const EdgeInsets.only(left: 15, right: 15),
@@ -236,7 +237,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                 child: AnimatedSwitcher(
                                                   duration: const Duration(milliseconds: 200),
                                                   child:
-                                                  loading && _focus == LocationType.start ?
+                                                  loading && _focus == LocationTypes.start ?
                                                   FormBuilderTextField(
                                                     key: startPointKey,
                                                     focusNode: _focusNodes[0],
@@ -246,12 +247,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     onChanged: (String? from) {
                                                       if (from is String && from.isNotEmpty) {
+                                                        _geocoder.clearPoints();
                                                         if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
                                                         }
                                                         setState(() {
-                                                          _focus = LocationType.start;
+                                                          _focus = LocationTypes.start;
                                                           loading = true;
                                                         });
                                                       }
@@ -284,12 +286,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     onChanged: (String? from) {
                                                       if (from is String && from.isNotEmpty) {
+                                                        _geocoder.clearPoints();
                                                         if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
                                                         }
                                                         setState(() {
-                                                          _focus = LocationType.start;
+                                                          _focus = LocationTypes.start;
                                                           loading = true;
                                                         });
                                                       }
@@ -298,7 +301,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     decoration: InputDecoration(
                                                       hintText:
-                                                        (_orderController.newOrder.from == null || _orderController.newOrder.from!.isEmpty) ? 'Откуда забрать?' : ((_orderController.newOrder.from!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ')),
+                                                        (_order.newOrder.from == null || _order.newOrder.from!.isEmpty) ? 'Откуда забрать?' : ((_order.newOrder.from!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ')),
                                                       hintStyle: const TextStyle(
                                                           color: Colors.white38
                                                       ),
@@ -405,7 +408,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                             AnimatedSwitcher(
                                               duration: const Duration(milliseconds: 200),
                                               child:
-                                              loading && _focus == LocationType.end ?
+                                              loading && _focus == LocationTypes.end ?
                                               Shimmer.fromColors(
                                                   child: Container(
                                                     margin: const EdgeInsets.only(left: 15, right: 15),
@@ -431,7 +434,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                 child: AnimatedSwitcher(
                                                   duration: const Duration(milliseconds: 200),
                                                   child:
-                                                  loading && _focus == LocationType.end ?
+                                                  loading && _focus == LocationTypes.end ?
                                                   FormBuilderTextField(
                                                     key: endPointKey,
                                                     focusNode: _focusNodes[1],
@@ -441,12 +444,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     onChanged: (String? whither) {
                                                       if (whither is String && whither.isNotEmpty) {
+                                                        _geocoder.clearPoints();
                                                         if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
                                                         }
                                                         setState(() {
-                                                          _focus = LocationType.end;
+                                                          _focus = LocationTypes.end;
                                                           loading = true;
                                                         });
                                                       }
@@ -479,12 +483,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     onChanged: (String? whither) {
                                                       if (whither is String && whither.isNotEmpty) {
+                                                        _geocoder.clearPoints();
                                                         if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
                                                         }
                                                         setState(() {
-                                                          _focus = LocationType.end;
+                                                          _focus = LocationTypes.end;
                                                           loading = true;
                                                         });
                                                       }
@@ -493,7 +498,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     decoration: InputDecoration(
                                                       hintText:
-                                                      (_orderController.newOrder.whither == null || _orderController.newOrder.whither!.isEmpty) ? 'Куда поедем?' : ((_orderController.newOrder.whither!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ')),
+                                                      (_order.newOrder.whither == null || _order.newOrder.whither!.isEmpty) ? 'Куда поедем?' : ((_order.newOrder.whither!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ')),
                                                       hintStyle: const TextStyle(
                                                           color: Colors.white38
                                                       ),
@@ -562,12 +567,15 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                           ) :
                                           Container(
                                             key: UniqueKey(),
-                                            child: ListView.builder(
-                                              padding: const EdgeInsets.all(10),
-                                              itemBuilder: (BuildContext ctx, i) {
-                                                List<String> entries = (_geocoderController.points?[i]['display_name'] as String).split(', ');
-                                                return
-                                                  OutlinedButton(
+                                            child:
+                                              _geocoder.points.isNotEmpty ?
+                                              ListView.builder(
+                                                padding: const EdgeInsets.all(10),
+                                                itemCount: _geocoder.points.length,
+                                                itemBuilder: (BuildContext ctx, i) {
+                                                  List<String> entries = (_geocoder.points[i]['display_name'] as String).split(', ');
+                                                  entries.removeRange(entries.length-3, entries.length);
+                                                  return OutlinedButton(
                                                       style: OutlinedButton.styleFrom(
                                                         side: const BorderSide(
                                                           color: Colors.transparent,
@@ -576,76 +584,80 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                                                       ),
                                                       onPressed: () {
-                                                        BlocProvider.of<TurboGoBloc>(context).add(TurboGoChangePointEvent());
+                                                        BlocProvider.of<TurboGoBloc>(context).add(TurboGoChangePointEvent(
+                                                            _geocoder.points[i], (_focus == LocationTypes.start ? CoordinateTypes.from : CoordinateTypes.whither)
+                                                        ));
                                                       },
-                                                      child: Column(
-                                                        children: [
-                                                          Row(
-                                                            //crossAxisAlignment: CrossAxisAlignment.start,
-                                                            children: <Widget>[
-                                                              if (_focus == LocationType.start) Container(
-                                                                margin: const EdgeInsets.only(left: 5, right: 15),
-                                                                child: const Icon(
-                                                                  Icons.circle,
-                                                                  size: 13,
-                                                                  color: Colors.white,
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.only(top: 5),
+                                                        child: Column(
+                                                          children: [
+                                                            Row(
+                                                              //crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: <Widget>[
+                                                                if (_focus == LocationTypes.start) Container(
+                                                                  margin: const EdgeInsets.only(left: 5, right: 15),
+                                                                  child: const Icon(
+                                                                    Icons.circle,
+                                                                    size: 13,
+                                                                    color: Colors.white,
+                                                                  ),
                                                                 ),
-                                                              ),
-                                                              if (_focus == LocationType.end) Container(
-                                                                margin: const EdgeInsets.only(left: 5, right: 15),
-                                                                child: const Icon(
-                                                                  Icons.stop,
-                                                                  size: 13,
-                                                                  color: Colors.red,
+                                                                if (_focus == LocationTypes.end) Container(
+                                                                  margin: const EdgeInsets.only(left: 5, right: 15),
+                                                                  child: const Icon(
+                                                                    Icons.stop,
+                                                                    size: 13,
+                                                                    color: Colors.red,
+                                                                  ),
                                                                 ),
-                                                              ),
-                                                              Expanded(
-                                                                child: Column(
-                                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                                  children: <Widget>[
-                                                                    SizedBox(
-                                                                      width: double.infinity,
-                                                                      height: 20.0,
-                                                                      child: Text(
-                                                                        entries[0],
-                                                                        style: Theme.of(context).textTheme.subtitle1,
-                                                                      ),
-                                                                      //color: Colors.white,
-                                                                    ),
-                                                                    const Padding(
-                                                                      padding: EdgeInsets.symmetric(vertical: 2.0),
-                                                                    ),
-                                                                    SizedBox(
-                                                                      width: double.infinity,
-                                                                      height: 20.0,
-                                                                      child: Text(
-                                                                        entries[1],
-                                                                        style: Theme.of(context).textTheme.subtitle2?.apply(
-                                                                            color: Colors.white60
+                                                                Expanded(
+                                                                  child: Column(
+                                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                                    children: <Widget>[
+                                                                      SizedBox(
+                                                                        width: double.infinity,
+                                                                        height: 20.0,
+                                                                        child: Text(
+                                                                          entries[0],
+                                                                          style: Theme.of(context).textTheme.subtitle1,
                                                                         ),
+                                                                        //color: Colors.white,
                                                                       ),
-                                                                      //color: Colors.white,
-                                                                    )
-                                                                  ],
+                                                                      const Padding(
+                                                                        padding: EdgeInsets.symmetric(vertical: 2.0),
+                                                                      ),
+                                                                      SizedBox(
+                                                                        width: double.infinity,
+                                                                        height: 20.0,
+                                                                        child: Text(
+                                                                          entries.getRange(1, entries.length).join(', '),
+                                                                          style: Theme.of(context).textTheme.subtitle2?.apply(
+                                                                              color: Colors.white60
+                                                                          ),
+                                                                        ),
+                                                                        //color: Colors.white,
+                                                                      )
+                                                                    ],
+                                                                  ),
                                                                 ),
-                                                              ),
-                                                              /*const Icon(
+                                                                /*const Icon(
                                                           Icons.arrow_forward,
                                                           color: Colors.white60,
                                                         )*/
-                                                            ],
-                                                          ),
-                                                          if ((_geocoderController.points!.length-1) != i) Container(
-                                                            height: 1,
-                                                            color: Colors.black38,
-                                                            margin: const EdgeInsets.only(top: 5),
-                                                          )
-                                                        ],
+                                                              ],
+                                                            ),
+                                                            if ((_geocoder.points.length-1) != i) Container(
+                                                              height: 1,
+                                                              color: Colors.black38,
+                                                              margin: const EdgeInsets.only(top: 5),
+                                                            )
+                                                          ],
+                                                        ),
                                                       )
                                                   );
-                                              },
-                                              itemCount: _geocoderController.points?.length,
-                                            ),
+                                                },
+                                              ) : null
                                           ),
                                       )
                                 )

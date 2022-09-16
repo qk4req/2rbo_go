@@ -23,26 +23,17 @@ class TimestampController {
   }
 
   DateTime create() {
-    if (_serverOffset != null) {
-      DateTime now = DateTime.now().toUtc();
-      //if (_serverOffset!.isNegative) {
-      //  now.subtract(_serverOffset!);
-      //} else {
-      //  now.add(_serverOffset!);
-      //}
-      if (_serverOffset != null) {
-        now.add(_serverOffset!);
+    DateTime now = DateTime.now().toUtc();
+    if (_networkOffset != null) {
+      return(now.add(_networkOffset!));
+    } else if (_serverOffset != null) {
+      if (_serverOffset!.isNegative) {
+        return(now.add(_serverOffset!));
+      } else {
+        return(now.subtract(_serverOffset!));
       }
-
-      return(now);
     } else {
-      DateTime now = DateTime.now().toUtc();
-
-      if (_networkOffset != null) {
-        now.add(_networkOffset!);
-      }
-
-      return(now);
+      return (now);
     }
   }
 }

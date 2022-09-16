@@ -41,49 +41,6 @@ class ClientController {
       'createdAt': clientModel.createdAt,
       'updatedAt': clientModel.updatedAt
     });
-    Geolocator.checkPermission().then((LocationPermission value) async {
-      switch (value.name) {
-        case 'denied':
-        case 'deniedForever':
-          await Geolocator.requestPermission();
-          break;
-        case 'always':
-        case 'whileInUse':
-          const LocationSettings locationSettings = LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 5,
-          );
-          //StreamSubscription<Position> positionStream =
-          Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position? position) {
-            /*_clientsOnline.update(
-                {
-                  'location': {
-                    'type': 'Point',
-                    'coordinates': [position?.latitude, position?.longitude]
-                  }
-                }
-            );*/
-          });
-          break;
-      }
-    });
-
-
-
-      /*Timer.periodic(const Duration(seconds: 3), (_) {
-        if (driverModel.id != null) {
-          Geolocator.getCurrentPosition().then((position) {
-            _driversOnline.update({
-              'driverId': driverModel.id,
-              'location': {
-                'type': 'Point',
-                'coordinates': [position.latitude, position.longitude]
-              },
-              'direction': position.heading
-            });
-          });
-        }
-      });*/
   }
 
   /*determineDeviceId() async {

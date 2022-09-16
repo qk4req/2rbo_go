@@ -47,6 +47,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitDown, DeviceOrientation.portraitUp]);
+    KeyboardService.dismiss();
 
     return BlocListener<TurboGoBloc, TurboGoState>(
     listener: (BuildContext ctx, state) {

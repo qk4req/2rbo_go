@@ -192,7 +192,7 @@ class _NavigationBarFragmentState extends State<NavigationBarFragment> {
   ) {
     return OutlinedButton(
       style: ButtonStyle(
-        splashFactory: onPressed == null ? InkRipple.splashFactory : NoSplash.splashFactory,
+        splashFactory: onPressed is Function ? InkRipple.splashFactory : NoSplash.splashFactory,
         shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0))),
         maximumSize: MaterialStateProperty.all(Size((MediaQuery.of(context).size.width * 0.8
         ), 60)),

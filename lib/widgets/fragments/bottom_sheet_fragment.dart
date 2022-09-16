@@ -22,7 +22,7 @@ class _BottomSheetFragmentState extends State<BottomSheetFragment>/* with Ticker
   late AnimationController controller;
   final Curve curve = Curves.easeIn;*/
   int _state = 0;
-  late LocationType _focus;
+  late LocationTypes _focus;
   /*static const List<Widget> sheets = [
     const MainColumn(),
     PointsColumn(),
