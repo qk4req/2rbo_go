@@ -126,13 +126,22 @@ class TurboGoSearchEvent extends TurboGoEvent {
   //List<Object?> get props => [/*isFirst*/];
 }
 
+class TurboGoCancelOrderEvent extends TurboGoEvent {
+}
 
+class TurboGoSignUpEvent extends TurboGoEvent {
+  final String phoneNumber;
 
-class TurboGoAddClientDataEvent extends TurboGoEvent {
-  final String? phoneNumber;
-
-  const TurboGoAddClientDataEvent(this.phoneNumber);
+  const TurboGoSignUpEvent(this.phoneNumber);
 
   //@override
   //List<Object?> get props => [phoneNumber];
+}
+
+
+
+class TurboGoBackEvent extends TurboGoEvent {
+  final TurboGoState prevState;
+
+  const TurboGoBackEvent(this.prevState);
 }

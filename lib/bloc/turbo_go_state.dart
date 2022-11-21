@@ -57,11 +57,15 @@ class TurboGoHomeState extends TurboGoConnectedState {
 
 class TurboGoPointsState extends TurboGoConnectedState {
   LocationTypes type = LocationTypes.end;
-  //final LocationType type;
+  List<bool> loaders = [false, false];
+  //List<Map?> hints = [null, null];
 
   TurboGoPointsState(
-      [this.type = LocationTypes.end]
-  ) : super(null);
+      [this.type = LocationTypes.end, List<bool>? l/*, List<Map?>? h*/]
+  ) : super(null) {
+    loaders = l ?? [false, false];
+    //hints = h ?? [null, null];
+  }
 }
 
 enum LocationTypes {

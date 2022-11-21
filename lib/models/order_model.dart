@@ -33,6 +33,8 @@ class OrderModel {
   String? comment = '';
   @HiveField(13)
   int? carId;
+  @HiveField(14)
+  int? promoCodeId;
 
   OrderModel(
       this.uuid,
@@ -41,6 +43,7 @@ class OrderModel {
         this.clientId,
         this.tariffId,
         this.carId,
+        this.promoCodeId,
         this.status,
         this.totalTime=0,
         this.totalSum=0,

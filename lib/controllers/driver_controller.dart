@@ -3,12 +3,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:turbo_go/controllers/drivers_online_controller.dart';
 import 'package:turbo_go/controllers/timestamp_controller.dart';
 import 'package:turbo_go/models/driver_model.dart';
-import 'package:turbo_go/models/drivers_online_model.dart';
 import '/bloc/turbo_go_bloc.dart';
 
 class DriverController {
   final DriversOnlineController _driversOnline = TurboGoBloc.driversOnlineController;
-  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final TimestampController _timestamp = TurboGoBloc.timestampController;
   Box<DriverModel> repo = Hive.box('drivers');
 
   bool compare(Map driver) {
@@ -49,8 +48,8 @@ class DriverController {
         driver['balance'] != null ? (driver['balance'] as num).toDouble() : 0.0,
         driver['avatar'],
         driver['licenseDate'],
-        driver['createdAt'] ?? _timestamp.create().toString(),
-        driver['updatedAt'] ?? _timestamp.create().toString()
+        driver['createdAt'] ?? _timestamp.create().toTimestamp(),
+        driver['updatedAt'] ?? _timestamp.create().toTimestamp()
     );
 
     repo.put(d.id, d);
@@ -73,7 +72,7 @@ class DriverController {
       d.avatar = driver['avatar'] ?? d.avatar;
       d.licenseDate = driver['licenseDate'] ?? d.licenseDate;
       d.createdAt = driver['createdAt'] ?? d.createdAt;
-      d.updatedAt = driver['updatedAt'] ?? _timestamp.create().toString();
+      d.updatedAt = driver['updatedAt'] ?? _timestamp.create().toTimestamp();
 
       repo.put(d.id, d).then((_) async {
         if (onSaved != null) {

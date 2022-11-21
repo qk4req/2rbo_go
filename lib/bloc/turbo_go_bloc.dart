@@ -2,12 +2,11 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:keyboard_service/keyboard_service.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
-import 'package:http/http.dart' as http;
-import 'package:turbo_go/controllers/geocoder_controller.dart';
-import 'package:turbo_go/controllers/notification_controller.dart';
+import 'package:socket_io_client/socket_io_client.dart';
+import 'package:turbo_go/controllers/reg_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:version/version.dart';
+
 
 
 import 'turbo_go_event.dart';
@@ -16,20 +15,21 @@ import '/controllers/client_controller.dart';
 import '/controllers/tariff_controller.dart';
 import '/controllers/order_controller.dart';
 import '/controllers/drivers_online_controller.dart';
-import '/controllers/flash_message_controller.dart';
 import '/controllers/driver_controller.dart';
 import '/controllers/timestamp_controller.dart';
 import '/controllers/clients_online_controller.dart';
+import '/controllers/geocoder_controller.dart';
+import '/controllers/notification_controller.dart';
 import '/models/tariff_model.dart';
 import '/models/order_model.dart';
 
 
 
 class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
-  static Version APP_VERSION = Version.parse('1.0.0');
-  static String DISPATCHER_PHONE_NUMBER = '+79678761243';
+  static Version appVersion = Version.parse('1.0.0');
+  static List<String> dispatcherPhoneNumbers = ['+79678761243'];
+  static const List<String> apiUrls = ['http://10.0.2.2:3000', 'http://185.119.58.157:3000'];
 
-  static TimestampController? timestampController;
   static NotificationController notificationController = NotificationController();
   static DriverController driverController = DriverController();
   static DriversOnlineController driversOnlineController = DriversOnlineController();
@@ -38,26 +38,30 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
   static TariffController tariffController = TariffController();
   static OrderController orderController = OrderController();
   static GeocoderController geocoderController = GeocoderController();
-  static FlashMessageController flashMessageController = FlashMessageController();
+  static late TimestampController timestampController;
+  static late RegController regController;
+  //static FlashMessageController flashMessageController = FlashMessageController();
 
-  //static const int API_RECONNECTION_DELAY = 1000;
-  static const String API_URL = 'http://185.119.58.157:3000';////'http://10.0.2.2:3000';
-  static const String GEOCODER_URL = 'https://nominatim.openstreetmap.org';//'http://92.255.107.194:8080';
+  static String get apiUrl => apiUrls[0];
+  static String get dispatcherPhoneNumber => dispatcherPhoneNumbers[0];
 
-  static io.Socket socket = io.io(
-      '$API_URL/users',
-      io.OptionBuilder()
+  static Socket socket = io(
+      '$apiUrl/admins',
+      OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
           .enableReconnection()
         //.setReconnectionDelay(API_RECONNECTION_DELAY)
         //.setReconnectionAttempts(1)
-          .setTimeout(5000)
+          .setTimeout(3000)
           .build()
   );
 
   TurboGoBloc(TurboGoState initialState) : super(initialState) {
     timestampController = TimestampController();
+    regController = RegController();
+
+
     _registerHandlers();
     on<TurboGoEvent>(_onEvent, transformer: sequential());
     orderController.repo.watch().listen((event) {
@@ -130,6 +134,18 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
         }
       );*/
       socket.connect();
+    }
+
+    if (event is TurboGoBackEvent) {
+      emit(event.prevState);
+    }
+
+    if (event is TurboGoCancelOrderEvent) {
+      orderController.updateNewOrder({
+        'status': 'canceled'
+      }, true);
+
+      add(TurboGoHomeEvent());
     }
 
     if (event is TurboGoStartOfLocationChangeEvent) {
@@ -275,14 +291,14 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
       orderController.updateNewOrder({
         event.type.name: {
           'type': 'Point',
-          'coordinates': [event.point['lat'], event.point['lon']],
+          'coordinates': [(event.point['lat'] as num).toDouble(), (event.point['lon'] as num).toDouble()],
           'desc': event.point['display_name']
         }
       });
       if (
         event.type == CoordinateTypes.whither &&
         orderController.newOrder.from != null &&
-        orderController.newOrder.from!.isNotEmpty
+        orderController.newOrder.from!['coordinates'][0] is double && orderController.newOrder.from!['coordinates'][1] is double
       ) add(const TurboGoTariffsEvent());
     }
 
@@ -320,7 +336,7 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
         if (state is TurboGoSearchState) {
           (state as TurboGoSearchState).value = false;
         } else {
-          emit(TurboGoSearchState(true));
+          emit(TurboGoSearchState(true, state is TurboGoRegState ? true : false));
         }
       } else {
         orderController.updateNewOrder({
@@ -333,18 +349,23 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
       }
     }
 
-    if (event is TurboGoAddClientDataEvent) {
-      orderController.updateNewOrder({
-        //'status': 'submitted'
-        'status': 'search'
-      });
-      clientController.update(
-        {
-          'phoneNumber': event.phoneNumber
-        }
-      );
+    if (event is TurboGoSignUpEvent) {
+      String phoneNumber = '+7${event.phoneNumber}';
 
-      emit(TurboGoSearchState(true, true));
+      regController.reg(phoneNumber, (Map data) {
+        /*orderController.updateNewOrder({
+          //'status': 'submitted'
+          'status': 'search'
+        });*/
+        clientController.update(
+          {
+            'phoneNumber': data['phoneNumber']
+          },
+          false
+        );
+
+        add(TurboGoSearchEvent());
+      });
     }
 
     if (event is TurboGoDriverEvent) {
@@ -367,154 +388,172 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
   _registerHandlers() {
     socket.onConnect((_) {
       print("Success! onConnect");
-      //socket.emit('clients.read', {
-      //  'uuid': clientController.clientModel.uuid
-      //});
-      socket.on('_', (data) async {
-        socket.on('clients.update', (data) {
-          if (data['success']) {
-            Map client = data['payload'];
-            if (client['uuid'] == clientController.clientModel.uuid && !clientController.compare(client)) {
-              clientController.update(client, false);
+      socket.once('_', (data) async {
+        if (!socket.hasListeners('clients.update')) {
+          socket.on('clients.update', (data) {
+            if (data['success']) {
+              Map client = data['payload'];
+              if (client['uuid'] == clientController.clientModel.uuid && !clientController.compare(client)) {
+                clientController.update(client, false);
+              }
             }
-          }
-        });
+          });
+        }
 
-        socket.on('clients.create', (data) {
-          if (data['success']) {
-            Map client = data['payload'];
+        if (!socket.hasListeners('clients.create')) {
+          socket.on('clients.create', (data) {
+            if (data['success']) {
+              Map client = data['payload'];
 
-            if (
+              if (
               client['uuid'] == clientController.clientModel.uuid &&
-              clientsOnlineController.clientsOnlineModel == null
-            ) {
-              clientsOnlineController.create({
-                'clientId': clientController.clientModel.uuid
-              });
+                  clientsOnlineController.clientsOnlineModel == null
+              ) {
+                clientsOnlineController.create({
+                  'clientId': clientController.clientModel.uuid
+                });
+              }
             }
-          }
-        });
+          });
+        }
 
-        socket.on('clientsOnline.read', (data) {
-          if (data['success']) {
-            List client = data['payload'];
+        if (!socket.hasListeners('clientsOnline.read')) {
+          socket.on('clientsOnline.read', (data) {
+            if (data['success']) {
+              List client = data['payload'];
 
-            if (client.isNotEmpty) {
-              //if (!clientController.compare(client.first)) {
+              if (client.isNotEmpty) {
+                //if (!clientController.compare(client.first)) {
                 clientsOnlineController.update(client.first, false);
-                if (
-                  client.first['client'] != null &&
-                  clientController.compare(client.first['client'])
-                ) {
+                if (client.first['client'] != null && clientController.compare(client.first['client'])) {
                   clientController.update(client.first['client'], false);
                 }
-              //}
-            } else {
-              clientController.create();
-            }
+                //}
+              } else {
+                clientController.create();
+              }
 
-            _toState();
-          }
-        });
+              _toState();
+            }
+          });
+        }
 
 
 
         //TARIFFS
-        socket.on('tariffs.read', (data) {
-          if (data['success']) {
-            List tariffs = data['payload'];
-            for (Map t in tariffs) {
-              if (!tariffController.contains(t)) {
-                tariffController.create(t);
-              } else {
-                if (!tariffController.compare(t)) {
-                  tariffController.update(t);
+        if (!socket.hasListeners('tariffs.read')) {
+          socket.on('tariffs.read', (data) {
+            if (data['success']) {
+              List tariffs = data['payload'];
+              for (Map t in tariffs) {
+                if (!tariffController.contains(t)) {
+                  tariffController.create(t);
+                } else {
+                  if (!tariffController.compare(t)) {
+                    tariffController.update(t);
+                  }
                 }
               }
             }
-          }
-        });
+          });
+        }
 
 
 
         //DRIVERS ONLINE
-        socket.on('driversOnline.read', (data) {
-          if (data['success']) {
-            List drivers = data['payload'];
+        if (!socket.hasListeners('driversOnline.read')) {
+          socket.on('driversOnline.read', (data) {
+            if (data['success']) {
+              List drivers = data['payload'];
 
-            for (Map d in drivers) {
-              if (!driverController.contains(d)) {
-                driverController.create(d['driver']);
-                /*Map tariff = d['driver']['car']['tariff'];
-            if (!tariffController.contains(tariff)) {
-              tariffController.create(tariff);
-            } else {
-              if (!tariffController.compare(tariff)) {
-                tariffController.update(tariff);
-              }
-            }*/
-              }
-              if (!driversOnlineController.contains(d)) {
-                driversOnlineController.create(d);
-              } else {
-                if (!driversOnlineController.compare(d)) {
-                  driversOnlineController.update(d);
+              for (Map d in drivers) {
+                if (!driverController.contains(d)) {
+                  driverController.create(d['driver']);
+                  /*Map tariff = d['driver']['car']['tariff'];
+                  if (!tariffController.contains(tariff)) {
+                    tariffController.create(tariff);
+                  } else {
+                    if (!tariffController.compare(tariff)) {
+                      tariffController.update(tariff);
+                    }
+                  }*/
+                }
+                if (!driversOnlineController.contains(d)) {
+                  driversOnlineController.create(d);
+                } else {
+                  if (!driversOnlineController.compare(d)) {
+                    driversOnlineController.update(d);
+                  }
                 }
               }
             }
-          }
-        });
+          });
+        }
 
-        socket.on('driversOnline.update', (data) {
-          if (data['success']) {
-            Map driver = data['payload'];
-            if (driversOnlineController.contains(driver) && !driversOnlineController.compare(driver)) {
-              driversOnlineController.update(driver);
+        if (!socket.hasListeners('driversOnline.update')) {
+          socket.on('driversOnline.update', (data) {
+            if (data['success']) {
+              Map driver = data['payload'];
+              if (driversOnlineController.contains(driver) &&
+                  !driversOnlineController.compare(driver)) {
+                driversOnlineController.update(driver);
+              }
             }
-          }
-        });
+          });
+        }
 
-        socket.on('drivers.update', (data) {
-          if (data['success']) {
-            Map driver = data['payload'];
-            if (driverController.contains(driver) && !driverController.compare(driver)) {
-              driverController.update(driver);
+        if (!socket.hasListeners('drivers.update')) {
+          socket.on('drivers.update', (data) {
+            if (data['success']) {
+              Map driver = data['payload'];
+              if (driverController.contains(driver) &&
+                  !driverController.compare(driver)) {
+                driverController.update(driver);
+              }
             }
-          }
-        });
+          });
+        }
 
 
 
         //ORDERS
         /*socket.on('orders.create', (data) {
-      if (data['success']) {
-        Map order = data['payload'];
-        if (order['clientId'] == clientController.clientModel.id) {
-          orderController.create(order);
-        }
-      } else {
-      }
-    });*/
-        socket.on('orders.read', (data) {
-          if (data['success']) {
-            List orders = data['payload'];
-            /*if (orderController.contains(order) && !orderController.compare(order)) {
-              orderController.update(order, false);
-            }*/
-          }
-        });
-
-        socket.on('orders.update', (data) {
           if (data['success']) {
             Map order = data['payload'];
-            if (orderController.contains(order) && !orderController.compare(order)) {
-              orderController.update(order, false);
+            if (order['clientId'] == clientController.clientModel.id) {
+              orderController.create(order);
             }
+          } else {
           }
-        });
+        });*/
+
+        if (!socket.hasListeners('orders.read')) {
+          socket.on('orders.read', (data) {
+            if (data['success']) {
+              List orders = data['payload'];
+              /*if (orderController.contains(order) && !orderController.compare(order)) {
+                orderController.update(order, false);
+              }*/
+            }
+          });
+        }
+
+        if (!socket.hasListeners('orders.update')) {
+          socket.on('orders.update', (data) {
+            if (data['success']) {
+              Map order = data['payload'];
+              if (orderController.contains(order) && !orderController.compare(order)) {
+                orderController.update(order, false);
+              }
+            }
+          });
+        }
 
         Version minVer = Version.parse(data['apps']['go']['minVersion']);
-        if (APP_VERSION >= minVer) {
+        if (appVersion >= minVer) {
+          //socket.emit('clients.read', {
+          //  'uuid': clientController.clientModel.uuid
+          //});
           socket.emit('clientsOnline.read', {
             'clientId': clientController.clientModel.uuid
           });
@@ -529,7 +568,7 @@ class TurboGoBloc extends Bloc<TurboGoEvent, TurboGoState> {
           socket.emit('tariffs.read');
         } else {
           add(TurboGoNotSupportedEvent(
-            APP_VERSION, minVer, data['apps']['go']['releaseNotes'], data['apps']['go']['upgradeUrl']
+            appVersion, minVer, data['apps']['go']['releaseNotes'], data['apps']['go']['upgradeUrl']
           ));
         }
       });

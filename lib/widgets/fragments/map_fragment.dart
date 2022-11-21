@@ -101,7 +101,9 @@ class _MapFragmentState extends State<MapFragment>{
   static bool _scrollEnabled = true;
   static bool _fastTapEnabled = true;
   static const double _defaultZoomLevel = 16.5;
-  Timer? _timer;
+  static final Map<String, Timer?> _timers = {
+
+  };
   static bool triggeredCameraPosition = false;
   late bool fromReg;
 
@@ -184,14 +186,19 @@ class _MapFragmentState extends State<MapFragment>{
       //(reason.name == 'application' && position.target.latitude == )
     ) {
       BlocProvider.of<TurboGoBloc>(context).add(TurboGoStartOfLocationChangeEvent());
-      _timer?.cancel();
+      if (_timers['first'] != null) {
+        _timers['first']!.cancel();
+        _timers['first'] = null;
+      }
       if (finished) {
-        _timer = Timer(const Duration(milliseconds: 500), () {
-          mapController!.getCameraPosition().then((CameraPosition position) {
-            BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
-                Point(latitude: position.target.latitude, longitude: position.target.longitude)
-            ));
-          });
+        _timers.addAll({
+          'first': Timer(const Duration(milliseconds: 500), () {
+            mapController!.getCameraPosition().then((CameraPosition position) {
+              BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
+                  Point(latitude: position.target.latitude, longitude: position.target.longitude)
+              ));
+            });
+          })
         });
       }
     }
@@ -230,18 +237,12 @@ class _MapFragmentState extends State<MapFragment>{
 
   @override
   void initState() {
-    /*driversOnlineController.repo.watch().listen((event) {
+    /*_driversOnline.repo.watch().listen((event) {
       DriversOnlineModel d = event.value;
 
-    });
 
-    if (driversOnlineController.repo.isNotEmpty) {
-      for (DriversOnlineModel d in driversOnlineController.repo.values) {
-        driverOnMap(d);
-      }
-    }*/
+    });*/
     fromReg = widget.fromReg;
-    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Timer.periodic(const Duration(milliseconds: 1000), (_) {
         if (mounted) {
@@ -253,11 +254,13 @@ class _MapFragmentState extends State<MapFragment>{
         }
       });
     });
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     _map = YandexMap(
+        mapType: MapType.vector,
         logoAlignment: const MapAlignment(horizontal: HorizontalAlignment.right, vertical: VerticalAlignment.bottom),
         //poiLimit: 100,
         modelsEnabled: false,
@@ -279,8 +282,8 @@ class _MapFragmentState extends State<MapFragment>{
             _objects.add(PlacemarkMapObject(
               mapId: const MapObjectId('start_point'),
               point: Point(
-                  latitude: _order.last!.from!['coordinates'][0],
-                  longitude: _order.last!.from!['coordinates'][1]
+                  latitude: _order.newOrder.from!['coordinates'][0],
+                  longitude: _order.newOrder.from!['coordinates'][1]
               ),
               icon: PlacemarkIcon.single(
                   PlacemarkIconStyle(
@@ -295,8 +298,8 @@ class _MapFragmentState extends State<MapFragment>{
             await mapController!.moveCamera(CameraUpdate.newCameraPosition(
                 CameraPosition(
                     target: Point(
-                        latitude: _order.last!.from!['coordinates'][0],
-                        longitude: _order.last!.from!['coordinates'][1]
+                        latitude: _order.newOrder.from!['coordinates'][0],
+                        longitude: _order.newOrder.from!['coordinates'][1]
                     ),
                     zoom: _defaultZoomLevel
                 )
@@ -329,6 +332,11 @@ class _MapFragmentState extends State<MapFragment>{
                     whitherCoordinates is List && whitherCoordinates.length == 2 &&
                         whitherCoordinates[0] is double && whitherCoordinates[1] is double;
 
+            if (_timers['second'] != null) {
+              _timers['second']!.cancel();
+              _timers['second'] = null;
+            }
+
             if (state is TurboGoHomeState) {
               setState(() {
                 enableGestures();
@@ -336,6 +344,12 @@ class _MapFragmentState extends State<MapFragment>{
                   clearPoints();
                   defaultCameraPosition(ctx);
                 }
+              });
+            } else if (state is TurboGoPointsState) {
+              setState(() {
+                enableGestures();
+                clearPoints();
+                //defaultCameraPosition(ctx);
               });
             } else if (state is TurboGoTariffsState) {
               setState(() {
@@ -402,7 +416,7 @@ class _MapFragmentState extends State<MapFragment>{
             } else if (state is TurboGoSearchState) {
               setState(() {
                 disableGestures();
-                clearPoints();
+                /*clearPoints();
 
                 if (validFromCoordinates) {
                   _objects.add(PlacemarkMapObject(
@@ -421,7 +435,7 @@ class _MapFragmentState extends State<MapFragment>{
                     ),
                     opacity: 1,
                   ));
-                }
+                }*/
               });
               if (validFromCoordinates) {
                 await mapController!.moveCamera(CameraUpdate.newCameraPosition(
@@ -436,37 +450,40 @@ class _MapFragmentState extends State<MapFragment>{
               }
             } else if (state is TurboGoDriverState) {
               setState(() {
-                disableGestures();
+                enableGestures();
               });
 
-              DriversOnlineModel? driver = _driversOnline.getById(_order.last!.driverId!);
-              if (
-              validFromCoordinates &&
-                  driver != null && driver.location != null
-              ) {
-                //setState(() {
-                //  disableGestures();
-                //});
 
-                await mapController!.moveCamera(CameraUpdate.newCameraPosition(
-                    CameraPosition(
+
+              _timers.addAll({
+                'second': Timer.periodic(const Duration(milliseconds: 1500), (_) async {
+                  DriversOnlineModel? driver = _driversOnline.getById(_order.newOrder.driverId!);
+
+                  if (
+                  validFromCoordinates &&
+                      driver != null && driver.location != null
+                  ) {
+                    await mapController!.moveCamera(CameraUpdate.newCameraPosition(
+                      CameraPosition(
                         target: getCentralPoint([
                           Point(
-                              latitude: fromCoordinates[0],
-                              longitude: fromCoordinates[1]
+                            latitude: fromCoordinates[0],
+                            longitude: fromCoordinates[1]
                           ),
                           Point(
-                              latitude: driver.location!['coordinates'][0],
-                              longitude: driver.location!['coordinates'][1]
+                            latitude: driver.location!['coordinates'][0],
+                            longitude: driver.location!['coordinates'][1]
                           )
                         ]),
                         zoom: getZoomLevel([
                           fromCoordinates,
                           driver.location!['coordinates']
                         ]) - 1
-                    )
-                ));
-              }
+                      ),
+                    ), animation: const MapAnimation());
+                  }
+                })
+              });
             }
           },
           child: _map
@@ -546,70 +563,88 @@ class _MapFragmentState extends State<MapFragment>{
                 const SizedBox(height: 15),
                 BlocBuilder<TurboGoBloc, TurboGoState>(
                     builder: (BuildContext ctx, TurboGoState state) {
+                      List<Widget> elements = [
+                        Container(
+                          decoration: const ShapeDecoration(
+                            shadows: [
+                              BoxShadow(
+                                blurRadius: 4,
+                                color: Colors.black38,
+                              ),
+                            ],
+                            shape: CircleBorder(
+                              side: BorderSide(
+                                width: 4,
+                                color: Colors.transparent,
+                              ),
+                            ),
+                          ),
+                        )
+                      ];
+
                       if (state is TurboGoLocationHasChangedState) {
                         TurboGoState prevState = state.prevState;
 
                         if (prevState is TurboGoHomeState) {
-                          return const ImageIcon(
-                            AssetImage('lib/assets/images/start_point.png'),
-                            size: 35,
-                            color: Colors.white,
+                          return Column(
+                            children: [
+                              const ImageIcon(
+                                AssetImage('lib/assets/images/start_point.png'),
+                                size: 35,
+                                color: Colors.white,
+                              ), ...elements
+                            ],
                           );
                         }
 
                         if (prevState is TurboGoPointsState) {
-                          return ImageIcon(
-                            AssetImage(
-                              (prevState.type == LocationTypes.start)
-                                ? 'lib/assets/images/start_point.png'
-                                : 'lib/assets/images/end_point.png'
-                            ),
-                            size: 35,
-                            color: (prevState.type == LocationTypes.start) ? Colors.white : Colors.redAccent
+                          return Column(
+                            children: [
+                              ImageIcon(
+                                  AssetImage(
+                                      (prevState.type == LocationTypes.start)
+                                          ? 'lib/assets/images/start_point.png'
+                                          : 'lib/assets/images/end_point.png'
+                                  ),
+                                  size: 35,
+                                  color: (prevState.type == LocationTypes.start) ? Colors.white : Colors.redAccent
+                              ), ...elements
+                            ],
                           );
                         }
                       }
 
                       if (state is TurboGoHomeState) {
-                        return const ImageIcon(
-                          AssetImage('lib/assets/images/start_point.png'),
-                          size: 35,
-                          color: Colors.white,
+                        return Column(
+                          children: [
+                            const ImageIcon(
+                              AssetImage('lib/assets/images/start_point.png'),
+                              size: 35,
+                              color: Colors.white,
+                            ), ...elements
+                          ],
                         );
                       }
 
                       if (state is TurboGoPointsState) {
-                        return ImageIcon(
-                          AssetImage(
-                            (state.type == LocationTypes.start)
-                              ? 'lib/assets/images/start_point.png'
-                              : 'lib/assets/images/end_point.png'
-                          ),
-                          size: 35,
-                          color: (state.type == LocationTypes.start) ? Colors.white : Colors.redAccent
+                        return Column(
+                          children: [
+                            ImageIcon(
+                                AssetImage(
+                                    (state.type == LocationTypes.start)
+                                        ? 'lib/assets/images/start_point.png'
+                                        : 'lib/assets/images/end_point.png'
+                                ),
+                                size: 35,
+                                color: (state.type == LocationTypes.start) ? Colors.white : Colors.redAccent
+                            ), ...elements
+                          ],
                         );
                       }
 
                       return Container();
                     }
                 ),
-                //const Icon(Icons.place, size: 35, color: Colors.white38,),
-                Container(
-                  decoration: const ShapeDecoration(
-                    shadows: [
-                      BoxShadow(
-                        blurRadius: 4,
-                        color: Colors.black38,
-                      ),
-                    ],
-                    shape: CircleBorder(
-                      side: BorderSide(
-                        width: 4,
-                        color: Colors.transparent,
-                      ),
-                    ),
-                  ),
-                )
               ],
             ),
           )

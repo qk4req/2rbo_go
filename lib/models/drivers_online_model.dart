@@ -10,7 +10,7 @@ part 'drivers_online_model.g.dart';
 @HiveType(typeId: 3)
 class DriversOnlineModel {
   final DriverController _driver = TurboGoBloc.driverController;
-  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final TimestampController _timestamp = TurboGoBloc.timestampController;
 
   @HiveField(0)
   int driverId;

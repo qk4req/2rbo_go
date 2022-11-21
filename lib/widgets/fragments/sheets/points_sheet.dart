@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -15,15 +13,15 @@ import '/bloc/turbo_go_event.dart';
 
 class PointsSheet extends StatefulWidget {
   final LocationTypes focus;
-  const PointsSheet({Key? key, required this.focus}) : super(key: key);
+  final List<bool> loaders;
+  //final List<Map?> hints;
+  const PointsSheet({Key? key, required this.focus, required this.loaders/*, required this.hints*/}) : super(key: key);
 
   @override
   _PointsSheetState createState() => _PointsSheetState();
 }
 
 class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin<PointsSheet> {
-  static const int loadingDuration = 1500;
-
   final OrderController _order = TurboGoBloc.orderController;
   final GeocoderController _geocoder = TurboGoBloc.geocoderController;
   GlobalKey startPointKey = GlobalKey<FormBuilderFieldState>();
@@ -34,30 +32,26 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
   final Curve curve = Curves.easeIn;
 
   late LocationTypes _focus;
-  final Map<int, Timer?> _timers = {};
-  Timer? _timer;
-  bool loading = true;
+  List<bool> _loaders = [false, false];
+  final List<String?> _hints = [null, null];
+  final List<TextEditingController> _controllers = [TextEditingController(), TextEditingController()];
   String? from;
   String? whither;
-  //List? points;
   final List<FocusNode> _focusNodes = [FocusNode(), FocusNode()];
 
 
   @override
   void initState() {
+    _geocoder.clearPoints();
     _focus = widget.focus;
+    _loaders = widget.loaders;
+    //_hints = widget.hints;
+
     super.initState();
     controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
     animation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(controller);
     WidgetsBinding.instance.addPostFrameCallback((duration) {
       controller.forward();
-      _timer = Timer(const Duration(milliseconds: loadingDuration), () {
-        if (mounted) {
-          setState(() {
-            loading = false;
-          });
-        }
-      });
       if (_focus == LocationTypes.start) {
         _focusNodes[0].requestFocus();
       } else {
@@ -65,24 +59,19 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
       }
     });
     _geocoder.addListener(() {
-      _timers[1] = Timer(const Duration(milliseconds: loadingDuration), () {
-        if (mounted) {
-          setState(() {
-            loading = false;
-          });
-        }
-      });
-    });
-    /*
-    _order.repo.watch(key: _order.newOrderKey).listen((event) {
-      points = (_focus == LocationType.start) ? _order.newOrder.from?['data'] : _order.newOrder.whither?['data'];
-      if (_focus == LocationType.start &&
-        points is List
-      ) {
-
+      if (mounted) {
+        setState(() {
+          _loaders[0] = false;
+        });
       }
     });
-    */
+    _geocoder.r.addListener(() {
+      if (mounted) {
+        setState(() {
+          _loaders[1] = false;
+        });
+      }
+    });
   }
 
   @override
@@ -98,30 +87,29 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
         //_startPointKey = GlobalKey<FormBuilderFieldState>();
         //_endPointKey = GlobalKey<FormBuilderFieldState>();
         if (state is TurboGoLocationHasChangedState) {
-          await controller.reverse();
-          _timer?.cancel();
-          _timer = null;
           setState(() {
-            if (mounted) {
-              loading = true;
-            }
+            _loaders[0] = false;
+            _loaders[1] = true;
           });
+          await controller.reverse();
+          //_timer?.cancel();
+          //_timer = null;
         }
 
         if (state is TurboGoPointsState) {
           await controller.forward();
-          _timer = Timer(const Duration(milliseconds: loadingDuration), () {
+          /*_timer = Timer(const Duration(milliseconds: loadingDuration), () {
             if (mounted) {
               setState(() {
                 loading = false;
               });
-              /*if (_focus == LocationType.start) {
+              if (_focus == LocationType.start) {
                 _focusNodes[0].requestFocus();
               } else {
                 _focusNodes[1].requestFocus();
-              }*/
+              }
             }
-          });
+          });*/
         }
       },
       child:
@@ -211,7 +199,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                             AnimatedSwitcher(
                                               duration: const Duration(milliseconds: 200),
                                               child:
-                                              loading && _focus == LocationTypes.start ?
+                                              _loaders.contains(true) && _focus == LocationTypes.start ?
                                               Shimmer.fromColors(
                                                   child: Container(
                                                     margin: const EdgeInsets.only(left: 15, right: 15),
@@ -237,24 +225,27 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                 child: AnimatedSwitcher(
                                                   duration: const Duration(milliseconds: 200),
                                                   child:
-                                                  loading && _focus == LocationTypes.start ?
+                                                  _loaders.contains(true) && _focus == LocationTypes.start ?
                                                   FormBuilderTextField(
                                                     key: startPointKey,
                                                     focusNode: _focusNodes[0],
                                                     //autofocus: (_focus == LocationType.start),
                                                     onTap: () {
+                                                      _geocoder.clearPoints();
+                                                      setState(() {
+                                                        _focus = LocationTypes.start;
+                                                      });
                                                       BlocProvider.of<TurboGoBloc>(context).add(TurboGoStartPointEvent());
                                                     },
                                                     onChanged: (String? from) {
                                                       if (from is String && from.isNotEmpty) {
-                                                        _geocoder.clearPoints();
-                                                        if (_timers[1] is Timer) {
+                                                        /*if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
-                                                        }
+                                                        }*/
                                                         setState(() {
-                                                          _focus = LocationTypes.start;
-                                                          loading = true;
+                                                          _loaders[0] = true;
+                                                          _loaders[1] = false;
                                                         });
                                                       }
                                                       this.from = from;
@@ -276,24 +267,28 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                         decoration: TextDecoration.none
                                                     ),
                                                     name: 'start_point',
+                                                    controller: _controllers[0],
                                                   ) :
                                                   FormBuilderTextField(
                                                     key: startPointKey,
                                                     focusNode: _focusNodes[0],
                                                     //autofocus: (_focus == LocationType.start),
                                                     onTap: () {
+                                                      _geocoder.clearPoints();
+                                                      setState(() {
+                                                        _focus = LocationTypes.start;
+                                                      });
                                                       BlocProvider.of<TurboGoBloc>(context).add(TurboGoStartPointEvent());
                                                     },
                                                     onChanged: (String? from) {
                                                       if (from is String && from.isNotEmpty) {
-                                                        _geocoder.clearPoints();
-                                                        if (_timers[1] is Timer) {
+                                                        /*if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
-                                                        }
+                                                        }*/
                                                         setState(() {
-                                                          _focus = LocationTypes.start;
-                                                          loading = true;
+                                                          _loaders[0] = true;
+                                                          _loaders[1] = false;
                                                         });
                                                       }
                                                       this.from = from;
@@ -301,7 +296,14 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     decoration: InputDecoration(
                                                       hintText:
-                                                        (_order.newOrder.from == null || _order.newOrder.from!.isEmpty) ? 'Откуда забрать?' : ((_order.newOrder.from!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ')),
+                                                          _hints[0] ?? (
+                                                              (_order.newOrder.from == null ||
+                                                                  _order.newOrder.from!['coordinates'][0] is! double ||
+                                                                  _order.newOrder.from!['coordinates'][1] is! double)
+                                                                  ? 'Откуда забрать?' : (
+                                                                  (_order.newOrder.from!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ')
+                                                              )
+                                                          ),
                                                       hintStyle: const TextStyle(
                                                           color: Colors.white38
                                                       ),
@@ -341,11 +343,12 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                         color: Colors.white,
                                                         decoration: TextDecoration.none
                                                     ),
-                                                    //key: _startPointKey,
                                                     name: 'start_point',
+                                                    controller: _controllers[0],
                                                   ),
                                                 )
-                                            )
+                                            ),
+                                            _mapButton(LocationTypes.start)
                                           ],
                                         ),
                                         Container(
@@ -408,7 +411,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                             AnimatedSwitcher(
                                               duration: const Duration(milliseconds: 200),
                                               child:
-                                              loading && _focus == LocationTypes.end ?
+                                              _loaders.contains(true) && _focus == LocationTypes.end ?
                                               Shimmer.fromColors(
                                                   child: Container(
                                                     margin: const EdgeInsets.only(left: 15, right: 15),
@@ -434,24 +437,27 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                 child: AnimatedSwitcher(
                                                   duration: const Duration(milliseconds: 200),
                                                   child:
-                                                  loading && _focus == LocationTypes.end ?
+                                                  _loaders.contains(true) && _focus == LocationTypes.end ?
                                                   FormBuilderTextField(
                                                     key: endPointKey,
                                                     focusNode: _focusNodes[1],
                                                     //autofocus: (_focus == LocationType.end),
                                                     onTap: () {
+                                                      _geocoder.clearPoints();
+                                                      setState(() {
+                                                        _focus = LocationTypes.end;
+                                                      });
                                                       BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndPointEvent());
                                                     },
                                                     onChanged: (String? whither) {
                                                       if (whither is String && whither.isNotEmpty) {
-                                                        _geocoder.clearPoints();
-                                                        if (_timers[1] is Timer) {
+                                                        /*if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
-                                                        }
+                                                        }*/
                                                         setState(() {
-                                                          _focus = LocationTypes.end;
-                                                          loading = true;
+                                                          _loaders[0] = true;
+                                                          _loaders[1] = false;
                                                         });
                                                       }
                                                       this.whither = whither;
@@ -473,24 +479,28 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                         decoration: TextDecoration.none
                                                     ),
                                                     name: 'end_point',
+                                                    controller: _controllers[1],
                                                   ) :
                                                   FormBuilderTextField(
                                                     key: endPointKey,
                                                     focusNode: _focusNodes[1],
                                                     //autofocus: (_focus == LocationType.end),
                                                     onTap: () {
+                                                      _geocoder.clearPoints();
+                                                      setState(() {
+                                                        _focus = LocationTypes.end;
+                                                      });
                                                       BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndPointEvent());
                                                     },
                                                     onChanged: (String? whither) {
                                                       if (whither is String && whither.isNotEmpty) {
-                                                        _geocoder.clearPoints();
-                                                        if (_timers[1] is Timer) {
+                                                        /*if (_timers[1] is Timer) {
                                                           _timers[1]!.cancel();
                                                           _timers[1] = null;
-                                                        }
+                                                        }*/
                                                         setState(() {
-                                                          _focus = LocationTypes.end;
-                                                          loading = true;
+                                                          _loaders[0] = true;
+                                                          _loaders[1] = false;
                                                         });
                                                       }
                                                       this.whither = whither;
@@ -498,7 +508,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                     },
                                                     decoration: InputDecoration(
                                                       hintText:
-                                                      (_order.newOrder.whither == null || _order.newOrder.whither!.isEmpty) ? 'Куда поедем?' : ((_order.newOrder.whither!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ')),
+                                                        _hints[1] ?? (
+                                                            (_order.newOrder.whither == null ||
+                                                                _order.newOrder.whither!['coordinates'][0] is! double ||
+                                                                _order.newOrder.whither!['coordinates'][1] is! double)
+                                                                ? 'Куда поедем?' :
+                                                            ((_order.newOrder.whither!['desc'] ?? 'МЕТКА СТОИТ НА КАРТЕ'))
+                                                        ),
                                                       hintStyle: const TextStyle(
                                                           color: Colors.white38
                                                       ),
@@ -512,11 +528,12 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                         color: Colors.white,
                                                         decoration: TextDecoration.none
                                                     ),
-                                                    //key: _startPointKey,
                                                     name: 'end_point',
+                                                    controller: _controllers[1],
                                                   ),
                                                 )
-                                            )
+                                            ),
+                                            _mapButton(LocationTypes.end)
                                           ],
                                         )
                                       ],
@@ -528,7 +545,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                       AnimatedSwitcher(
                                         duration: const Duration(milliseconds: 100),
                                         child:
-                                          loading ?
+                                          _loaders.contains(true) ?
                                           Shimmer.fromColors(
                                             baseColor: Colors.white60,
                                             highlightColor: Colors.white,
@@ -574,7 +591,7 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                 itemCount: _geocoder.points.length,
                                                 itemBuilder: (BuildContext ctx, i) {
                                                   List<String> entries = (_geocoder.points[i]['display_name'] as String).split(', ');
-                                                  entries.removeRange(entries.length-3, entries.length);
+                                                  entries.removeRange(entries.length - 3, entries.length);
                                                   return OutlinedButton(
                                                       style: OutlinedButton.styleFrom(
                                                         side: const BorderSide(
@@ -585,8 +602,32 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                       ),
                                                       onPressed: () {
                                                         BlocProvider.of<TurboGoBloc>(context).add(TurboGoChangePointEvent(
-                                                            _geocoder.points[i], (_focus == LocationTypes.start ? CoordinateTypes.from : CoordinateTypes.whither)
+                                                          _geocoder.points[i], (_focus == LocationTypes.start ? CoordinateTypes.from : CoordinateTypes.whither)
                                                         ));
+                                                        if (_focus == LocationTypes.start) {
+                                                          _controllers[0].clear();
+                                                          setState(() {
+                                                            _hints[0] = entries.join(', ');
+                                                          });
+                                                        }
+                                                        if (_focus == LocationTypes.end) {
+                                                          _controllers[1].clear();
+                                                          setState(() {
+                                                            _hints[1] = entries.join(', ');
+                                                          });
+                                                        }
+                                                        _geocoder.clearPoints();
+                                                        if (_order.newOrder.from == null ||
+                                                            _order.newOrder.from!['coordinates'][0] is! double ||
+                                                            _order.newOrder.from!['coordinates'][1] is! double) {
+                                                          _geocoder.clearPoints();
+                                                          _focusNodes[1].requestFocus();
+                                                        } else if (_order.newOrder.whither == null ||
+                                                                  _order.newOrder.whither!['coordinates'][0] is! double ||
+                                                                  _order.newOrder.whither!['coordinates'][1] is! double) {
+                                                          _geocoder.clearPoints();
+                                                          _focusNodes[0].requestFocus();
+                                                        }
                                                       },
                                                       child: Padding(
                                                         padding: const EdgeInsets.only(top: 5),
@@ -657,7 +698,13 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
                                                       )
                                                   );
                                                 },
-                                              ) : null
+                                              ) : Align(
+                                                alignment: Alignment.topCenter,
+                                                child: Container(
+                                                  margin: const EdgeInsets.only(top: 10),
+                                                  child: _nothingFind(),
+                                                ),
+                                              )
                                           ),
                                       )
                                 )
@@ -767,5 +814,44 @@ class _PointsSheetState extends State<PointsSheet> with TickerProviderStateMixin
         )
       ],
     );*/
+  }
+
+  Widget _nothingFind () {
+    String _nf = 'Ничего не найдено, укажите место на карте';
+    return Text(
+        from is String && from!.isNotEmpty ? _nf :
+        (whither is String && whither!.isNotEmpty ? _nf : ''),
+        style: Theme.of(context).textTheme.subtitle2?.apply(
+          color: Colors.redAccent,
+        )
+    );
+  }
+
+  Widget _mapButton (LocationTypes focus) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 50),
+      child: _loaders.every((loading) => !loading) && _focus == focus ?
+      Row(
+        children: [
+          Container(
+            width: 1,
+            height: 40,
+            color: Colors.black38,
+          ),
+          OutlinedButton(
+              onPressed: () {
+                BlocProvider.of<TurboGoBloc>(context).add(TurboGoStartOfLocationChangeEvent());
+              },
+              style: ButtonStyle(
+                side: MaterialStateProperty.all(BorderSide.none),
+                minimumSize: MaterialStateProperty.all(const Size(60, 45)),
+                shape: MaterialStateProperty.all(const RoundedRectangleBorder(borderRadius: BorderRadius.zero)),
+              ),
+              child: const Text('Карта')
+          )
+        ],
+      )
+          : Container(),
+    );
   }
 }

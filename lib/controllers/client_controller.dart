@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:hive/hive.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 //import 'package:turbo_go/controllers/clients_online_controller.dart';
 import 'package:uuid/uuid.dart';
@@ -10,7 +9,7 @@ import '/controllers/timestamp_controller.dart';
 import '/models/client_model.dart';
 
 class ClientController {
-  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final TimestampController _timestamp = TurboGoBloc.timestampController;
   //final ClientsOnlineController _clientsOnline = TurboGoBloc.clientsOnlineController;
   final Socket _socket = TurboGoBloc.socket;
   //String? _deviceId;
@@ -27,8 +26,8 @@ class ClientController {
         repo.get('middleName'),
         repo.get('phoneNumber'),
         repo.get('password'),
-        repo.get('createdAt'),
-        repo.get('updatedAt'),
+        repo.get('createdAt') ?? _timestamp.create().toTimestamp(),
+        repo.get('updatedAt') ?? _timestamp.create().toTimestamp(),
       );
     //}
     repo.putAll({
@@ -64,7 +63,7 @@ class ClientController {
               client['phoneNumber'] ?? clientModel.phoneNumber,
               client['password'] ?? clientModel.password,
               client['createdAt'] ?? clientModel.createdAt,
-              client['updatedAt'] ?? _timestamp.create().toString()
+              client['updatedAt'] ?? _timestamp.create().toTimestamp()
           );
 
       repo.putAll(client).then((_) async {

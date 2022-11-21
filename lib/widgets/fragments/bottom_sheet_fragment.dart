@@ -23,6 +23,8 @@ class _BottomSheetFragmentState extends State<BottomSheetFragment>/* with Ticker
   final Curve curve = Curves.easeIn;*/
   int _state = 0;
   late LocationTypes _focus;
+  late List<bool> _loaders;
+  //late List<Map?> _hints;
   /*static const List<Widget> sheets = [
     const MainColumn(),
     PointsColumn(),
@@ -83,6 +85,8 @@ class _BottomSheetFragmentState extends State<BottomSheetFragment>/* with Ticker
         if (state is TurboGoPointsState) {
           //await controller.animateTo(state is TurboGoExtendedPointsState ? 0.8 : 0.42, curve: curve, duration: const Duration(milliseconds: 200));
           _focus = state.type;
+          _loaders = state.loaders;
+          //_hints = state.hints;
 
           setState(() {
             _state = 1;
@@ -126,7 +130,7 @@ class _BottomSheetFragmentState extends State<BottomSheetFragment>/* with Ticker
             );
           },
           child:
-          _state == 1 ? PointsSheet(key: UniqueKey(), focus: _focus) :
+          _state == 1 ? PointsSheet(key: UniqueKey(), focus: _focus, loaders: _loaders/*, hints: _hints*/) :
           _state == 2 ? const TariffsSheet() :
           _state == 3 ? const DriverSheet() :
           _state == 4 ? const ChatSheet() :

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:hive/hive.dart';
 import 'package:socket_io_client/socket_io_client.dart';
-import 'package:turbo_go/controllers/client_controller.dart';
 import 'package:turbo_go/controllers/clients_online_controller.dart';
 import 'package:uuid/uuid.dart';
 
@@ -13,7 +12,7 @@ import '/controllers/timestamp_controller.dart';
 import '/models/order_model.dart';
 
 class OrderController {
-  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final TimestampController _timestamp = TurboGoBloc.timestampController;
   final ClientsOnlineController _clientsOnline = TurboGoBloc.clientsOnlineController;
   final Socket _socket = TurboGoBloc.socket;
   late String newOrderKey;
@@ -57,6 +56,7 @@ class OrderController {
         order['clientId'],
         order['tariffId'],
         order['carId'],
+        1,
         order['status'] ?? 'filled',
         order['totalTime'] ?? 0,
         order['totalSum'] != null ? (order['totalSum'] as num).toDouble() : 0,
@@ -64,8 +64,8 @@ class OrderController {
         order['whither'] != null ? (order['whither'] is String ? jsonDecode(order['whither']) : order['whither']) : null,
         order['comment'],
         order['startedAt'],
-        order['createdAt'] ?? _timestamp.create().toString(),
-        order['updatedAt'] ?? _timestamp.create().toString(),
+        order['createdAt'] ?? _timestamp.create().toTimestamp(),
+        order['updatedAt'] ?? _timestamp.create().toTimestamp(),
     );
 
     repo.put(o.uuid, o);
@@ -78,6 +78,7 @@ class OrderController {
           'clientId': o.clientId,
           'tariffId': o.tariffId,
           'carId': o.carId,
+          'promoCodeId': o.promoCodeId,
           'status': o.status,
           'from': o.from,
           'whither': o.whither,
@@ -101,6 +102,7 @@ class OrderController {
     o.clientId = order['clientId'] ?? o.clientId;
     o.tariffId = order['tariffId'] ?? o.tariffId;
     o.carId = order['carId'] ?? o.carId;
+    o.promoCodeId = order['promoCodeId'] ?? o.promoCodeId;
     o.status = order['status'] ?? o.status;
     o.totalTime = order['totalTime'] ?? o.totalTime;
     o.totalSum = order['totalSum'] != null ? (order['totalSum'] as num).toDouble() : o.totalSum;
@@ -109,7 +111,7 @@ class OrderController {
     o.comment = order['comment'] ?? o.comment;
     o.startedAt = order['startedAt'] ?? o.startedAt;
     o.createdAt = order['createdAt'] ?? o.createdAt;
-    o.updatedAt = order['updatedAt'] ?? _timestamp.create().toString();
+    o.updatedAt = order['updatedAt'] ?? _timestamp.create().toTimestamp();
 
     repo.put(o.uuid, o).then((value) async {
       if (onSaved != null) await onSaved();

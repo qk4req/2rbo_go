@@ -29,155 +29,180 @@ class _NavigationBarFragmentState extends State<NavigationBarFragment> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 5),
-      child: BlocBuilder<TurboGoBloc, TurboGoState>(
-        builder: (BuildContext ctx, TurboGoState state) {
-          if (state is TurboGoNotSupportedState) {
-            return _button(
-                Center(
-                    child: Text(
-                      'Обновить',
-                      style: Theme.of(context).textTheme.subtitle1,
-                    )
-                ),
-                    () {
-                  BlocProvider.of<TurboGoBloc>(context).add(TurboGoUpgradeAppEvent(state.upgradeUrl));
-                },
-                false
-            );
-          }
-
-          if (state is TurboGoNotConnectedState) {
-            return _button(
-                Center(
-                    child: Text(
-                      'Позвонить',
-                      style: Theme.of(context).textTheme.subtitle1,
-                    )
-                ),
-                () async {
-                  await FlutterPhoneDirectCaller.callNumber(TurboGoBloc.DISPATCHER_PHONE_NUMBER);
-                },
-                false
-            );
-          }
-
-          return ValueListenableBuilder(
-              valueListenable: TurboGoBloc.orderController.repo.listenable(keys: [_order.last?.uuid]),
-              builder: (ctx, Box<OrderModel> box, Widget? wid) {
-                OrderModel? last = box.get(_order.last?.uuid);
-                List? fromCoordinates = last?.from?['coordinates'];
-
-                return Container(
-                  child:
-                  last != null &&
-                  fromCoordinates is List &&
-                  fromCoordinates.length == 2 &&
-                  fromCoordinates[0] is double &&
-                  fromCoordinates[1] is double ?
-                  BlocBuilder<TurboGoBloc, TurboGoState>(
-                      builder: (BuildContext ctx, TurboGoState state) {
-                        if (
-                        ![TurboGoLocationHasChangedState, TurboGoHomeState, TurboGoSearchState].contains(state.runtimeType)
-                        ) {
-                          switch (state.runtimeType) {
-                            case TurboGoPointsState:
-                              return _button(
-                                  Text(
-                                    ((last.whither == null) ? 'Скажу водителю' : 'Далее'),
-                                    style: const TextStyle(
-                                        fontSize: 18
-                                    ),
-                                  ),
-                                      () {
-                                    BlocProvider.of<TurboGoBloc>(context).add(const TurboGoTariffsEvent());
-                                  }
-                              );
-                            case TurboGoTariffsState:
-                              return ValueListenableBuilder(
-                                  valueListenable: _driversOnline.repo.listenable(),
-                                  builder: (BuildContext ctx, Box<DriversOnlineModel> bx, wid) {
-                                    if (
-                                    bx.values.where((DriversOnlineModel d) {
-                                      return d.isOnline() && d.checkAvailability() && _driver.getById(d.driverId)?.car['tariffId'] == last.tariffId;
-                                    }).isNotEmpty
-                                    ) {
-                                      return _button(
-                                          const Text(
-                                              'Заказать',
-                                              style: TextStyle(
-                                                  fontSize: 18
-                                              )
-                                          ),
-                                              () {
-                                            BlocProvider.of<TurboGoBloc>(context).add(TurboGoSearchEvent());
-                                          }
-                                      );
-                                    } else {
-                                      return _button(
-                                          const Text(
-                                              'Нет доступных машин',
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                  fontSize: 18
-                                              )
-                                          ),
-                                          null,
-                                          false
-                                      );
-                                    }
-                                  }
-                              );
-                            case TurboGoDriverState:
-                            //TurboGoDriverState _state = state as TurboGoDriverState;
-
-                              return (
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 20),
-                                    width: MediaQuery.of(context).size.width,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Wrap(
-                                          children: [
-                                            ValueListenableBuilder(
-                                                valueListenable: _driver.repo.listenable(keys: [_order.last?.driverId]),
-                                                builder: (BuildContext ctx, Box<DriverModel> bx, wid) {
-                                                  DriverModel d = bx.get(_order.last?.driverId)!;
-
-                                                  return ElevatedButton(
-                                                    onPressed: () async {
-                                                      await FlutterPhoneDirectCaller.callNumber(d.phoneNumber);
-                                                    },
-                                                    child: const Icon(
-                                                      Icons.phone,
-                                                      color: Colors.black,
-                                                    ),
-                                                    style: ElevatedButton.styleFrom(
-                                                      primary: Colors.green,
-                                                      shape: const CircleBorder(),
-                                                      padding: const EdgeInsets.all(15),
-                                                    ),
-                                                  );
-                                                }
-                                            )
-                                          ],
-                                        )
-                                      ],
-                                    ),
-                                  )
-                              );
-                          }
-                        }
-                        return Container();
-                      }
-                  ) :
-                  null,
+    return Flex(
+      direction: Axis.vertical,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Container(
+          margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 5),
+          child: BlocBuilder<TurboGoBloc, TurboGoState>(
+            builder: (BuildContext ctx, TurboGoState state) {
+              if (state is TurboGoNotSupportedState) {
+                return _button(
+                    Center(
+                        child: Text(
+                          'Обновить',
+                          style: Theme.of(context).textTheme.subtitle1,
+                        )
+                    ),
+                        () {
+                      BlocProvider.of<TurboGoBloc>(context).add(TurboGoUpgradeAppEvent(state.upgradeUrl));
+                    },
+                    false
                 );
               }
-          );
-        },
+
+              if (state is TurboGoNotConnectedState) {
+                return _button(
+                    Center(
+                        child: Text(
+                          'Позвонить',
+                          style: Theme.of(context).textTheme.subtitle1,
+                        )
+                    ),
+                        () async {
+                      await FlutterPhoneDirectCaller.callNumber(TurboGoBloc.dispatcherPhoneNumber);
+                    },
+                    false
+                );
+              }
+
+              return ValueListenableBuilder(
+                  valueListenable: TurboGoBloc.orderController.repo.listenable(keys: [_order.last?.uuid]),
+                  builder: (ctx, Box<OrderModel> box, Widget? wid) {
+                    OrderModel? last = box.get(_order.last?.uuid);
+                    List? fromCoordinates = last?.from?['coordinates'];
+
+                    return Container(
+                      child:
+                      last != null &&
+                          fromCoordinates is List &&
+                          fromCoordinates.length == 2 &&
+                          fromCoordinates[0] is double &&
+                          fromCoordinates[1] is double ?
+                      BlocBuilder<TurboGoBloc, TurboGoState>(
+                          builder: (BuildContext ctx, TurboGoState state) {
+                            if (state is TurboGoLocationHasChangedState && state.prevState is TurboGoDriverState) {
+                              return _callButton();
+                            }
+
+                            if (
+                            ![TurboGoLocationHasChangedState, TurboGoHomeState].contains(state.runtimeType)
+                            ) {
+                              switch (state.runtimeType) {
+                                case TurboGoPointsState:
+                                  return _button(
+                                      Text(
+                                        ((last.whither == null) ? 'Скажу водителю' : 'Далее'),
+                                        style: const TextStyle(
+                                            fontSize: 18
+                                        ),
+                                      ),
+                                          () {
+                                        BlocProvider.of<TurboGoBloc>(context).add(const TurboGoTariffsEvent());
+                                      }
+                                  );
+                                case TurboGoTariffsState:
+                                  return ValueListenableBuilder(
+                                      valueListenable: _driversOnline.repo.listenable(),
+                                      builder: (BuildContext ctx, Box<DriversOnlineModel> bx, wid) {
+                                        if (
+                                        bx.values.where((DriversOnlineModel d) {
+                                          return d.isOnline() && d.checkAvailability() && _driver.getById(d.driverId)?.car['tariffId'] == last.tariffId;
+                                        }).isNotEmpty
+                                        ) {
+                                          return _button(
+                                              const Text(
+                                                  'Заказать',
+                                                  style: TextStyle(
+                                                      fontSize: 18
+                                                  )
+                                              ),
+                                                  () {
+                                                BlocProvider.of<TurboGoBloc>(context).add(TurboGoSearchEvent());
+                                              }
+                                          );
+                                        } else {
+                                          return _button(
+                                              const Text(
+                                                  'Нет доступных машин',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                      fontSize: 18
+                                                  )
+                                              ),
+                                              null,
+                                              false
+                                          );
+                                        }
+                                      }
+                                  );
+                                case TurboGoSearchState:
+                                  return _roundButton(
+                                      icon: Icons.close,
+                                      iconColor: Colors.red,
+                                      text: 'Отменить',
+                                      onPressed: () {
+                                        BlocProvider.of<TurboGoBloc>(context).add(TurboGoCancelOrderEvent());
+                                      }
+                                  );
+                                case TurboGoDriverState:
+                                //TurboGoDriverState _state = state as TurboGoDriverState;
+
+                                  return (_callButton());
+                              }
+                            }
+                            return Container();
+                          }
+                      ) :
+                      null,
+                    );
+                  }
+              );
+            },
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget _callButton() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      width: MediaQuery.of(context).size.width,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Wrap(
+            children: [
+              ValueListenableBuilder(
+                  valueListenable: _driver.repo.listenable(keys: [_order.last?.driverId]),
+                  builder: (BuildContext ctx, Box<DriverModel> bx, wid) {
+                    DriverModel d = bx.get(_order.last?.driverId)!;
+
+                    return ElevatedButton(
+                      onPressed: () async {
+                        await FlutterPhoneDirectCaller.callNumber(d.phoneNumber);
+                      },
+                      child: const SizedBox(
+                        height: 50,
+                        width: 50,
+                        child: Icon(
+                          Icons.phone,
+                          color: Colors.green,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        primary: Colors.black38,
+                        shape: const CircleBorder(),
+                        //padding: const EdgeInsets.all(15),
+                      ),
+                    );
+                  }
+              )
+            ],
+          )
+        ],
       ),
     );
   }
@@ -216,6 +241,49 @@ class _NavigationBarFragmentState extends State<NavigationBarFragment> {
                 )
               ],
             ) : null,
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _roundButton(
+      {
+        required IconData icon,
+        Color iconColor = Colors.white,
+        Color buttonColor = Colors.black38,
+        String? text,
+        Color textColor = Colors.white,
+        Function()? onPressed
+      }
+      ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        children: [
+          ElevatedButton(
+            onPressed: onPressed ?? () {},
+            child: SizedBox(
+              height: 50,
+              width: 50,
+              child: Icon(
+                icon,
+                color: iconColor,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              primary: buttonColor,
+              shape: const CircleBorder(),
+              //padding: const EdgeInsets.all(15),
+            ),
+          ),
+          Container(
+              child: text != null ? Text(
+                text,
+                style: TextStyle(
+                    color: textColor
+                ),
+              ) : null
           )
         ],
       ),

@@ -1,9 +1,11 @@
+import 'package:flash/flash.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:turbo_go/bloc/turbo_go_bloc.dart';
 import 'package:turbo_go/bloc/turbo_go_event.dart';
+import 'package:turbo_go/controllers/reg_controller.dart';
 
 class RegPage extends StatefulWidget {
   const RegPage({Key? key}) : super(key: key);
@@ -13,10 +15,24 @@ class RegPage extends StatefulWidget {
 }
 
 class _RegPageState extends State<RegPage> {
+  final RegController reg = TurboGoBloc.regController;
   final _phoneNumberKey = GlobalKey<FormBuilderFieldState>();
   final TextEditingController _phoneNumberController = TextEditingController();
   String? _phoneNumberValue;
 
+  @override
+  void initState() {
+    reg.addListener(() {
+      if (reg.response == null) {
+        _showTopFlash(context, 'Не удалось подключиться к серверу!');
+      } else {
+        if (!reg.response!['success'] && reg.response!['message'] is String) {
+          _showTopFlash(context, reg.response!['message']);
+        }
+      }
+    });
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,9 +91,11 @@ class _RegPageState extends State<RegPage> {
                           ),
                           style: Theme.of(context).textTheme.subtitle1,
                           onChanged: (String? text) {
+                            if (text != null) {
                               setState(() {
                                 _phoneNumberValue = text;
                               });
+                            }
                           }
                       ))
                     ],
@@ -142,7 +160,7 @@ class _RegPageState extends State<RegPage> {
                               backgroundColor: MaterialStateProperty.all(Colors.black38),
                             ),
                             onPressed: () {
-                              BlocProvider.of<TurboGoBloc>(context).add(TurboGoAddClientDataEvent(_phoneNumberValue));
+                              BlocProvider.of<TurboGoBloc>(context).add(TurboGoSignUpEvent(_phoneNumberValue!));
                             },
                             child: Row(
                               children: <Widget>[
@@ -176,6 +194,41 @@ class _RegPageState extends State<RegPage> {
             }
         )
       ],
+    );
+  }
+
+  _showTopFlash(BuildContext context, String message) {
+    showFlash(
+      context: context,
+      duration: const Duration(seconds: 10),
+      builder: (_, controller) {
+        return Flash(
+          controller: controller,
+          /*backgroundGradient: RadialGradient(
+                colors: [Colors.redAccent, Colors.black87],
+                center: Alignment.topLeft,
+                radius: 2.5,
+              ),*/
+          backgroundColor: Colors.white,
+          brightness: Brightness.light,
+          boxShadows: const [BoxShadow(blurRadius: 4)],
+          barrierBlur: 3.0,
+          barrierColor: Colors.black38,
+          barrierDismissible: true,
+          behavior: FlashBehavior.fixed,
+          position: FlashPosition.top,
+          useSafeArea: true,
+          child: FlashBar(
+            title: const Text('Ошибка'),
+            content: Text(message),
+            showProgressIndicator: false,
+            primaryAction: TextButton(
+              onPressed: () => controller.dismiss(),
+              child: const Text('ПОНЯТНО', style: TextStyle(color: Colors.redAccent)),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -13,7 +13,7 @@ import '/models/clients_online_model.dart';
 
 class GeoFilters {
   static num minDistance = 10;//мин. дистанция >= 10м
-  static num maxAccuracy = 200;
+  static num maxAccuracy = 150;
   static num maxSpeed = 41.6667;//макс. скорость<=41.6667м/с (150км/ч)
   static num maxAcceleration = 3;//макс. ускорение<=3м/c
   static const int _maxPositions = 1000;
@@ -40,54 +40,13 @@ class GeoFilters {
     bool filter =
         distance(position) &&
             accuracy(position) &&
-            speed(position) &&
-            acceleration(position);
+            speed(position);// &&
+            //acceleration(position);
     if (filter) {
-      positions.add(
-          kalman(position)
-      );
+      kalman(position);
     }
 
     return filter;
-  }
-
-  static Position kalman(Position position) {
-    double accuracyMeasurement = position.accuracy;
-    int timeStampMillisecondsMeasurement = position.timestamp!.millisecondsSinceEpoch;
-    double latMeasurement = position.latitude;
-    double lngMeasurement = position.longitude;
-
-    if (accuracyMeasurement < _minAccuracy) {
-      accuracyMeasurement = _minAccuracy;
-    }
-    if (_variance < 0) {
-      _timeStampMilliseconds = timeStampMillisecondsMeasurement;
-      _lat = latMeasurement;
-      _lng = lngMeasurement;
-      _variance = accuracyMeasurement * accuracyMeasurement;
-    } else {
-      int timeIncMilliseconds = timeStampMillisecondsMeasurement - _timeStampMilliseconds;
-      if (timeIncMilliseconds > 0) {
-        _variance += timeIncMilliseconds * maxSpeed * maxSpeed / 1000;
-        _timeStampMilliseconds = timeStampMillisecondsMeasurement;
-      }
-
-      double K = _variance / (_variance + accuracyMeasurement * accuracyMeasurement);
-      _lat += K * (latMeasurement - _lat);
-      _lng += K * (lngMeasurement - _lng);
-      _variance = (1 - K) * _variance;
-    }
-
-    return Position(
-        longitude: _lng,
-        latitude: _lat,
-        timestamp: position.timestamp,
-        accuracy: position.accuracy,
-        altitude: position.altitude,
-        heading: position.heading,
-        speed: position.speed,
-        speedAccuracy: position.speedAccuracy
-    );
   }
 
   static bool distance(Position position) {
@@ -117,18 +76,86 @@ class GeoFilters {
     num dt = (position.timestamp!.millisecondsSinceEpoch - positions.last.timestamp!.millisecondsSinceEpoch) ~/ 1000;
     return (((v0 - v1 / dt)).abs() <= maxAcceleration);
   }
+
+  static void kalman(Position position) {
+    double accuracyMeasurement = position.accuracy;
+    int timeStampMillisecondsMeasurement = position.timestamp!.millisecondsSinceEpoch;
+    double latMeasurement = position.latitude;
+    double lngMeasurement = position.longitude;
+
+    if (accuracyMeasurement < _minAccuracy) {
+      accuracyMeasurement = _minAccuracy;
+    }
+    if (_variance < 0) {
+      _timeStampMilliseconds = timeStampMillisecondsMeasurement;
+      _lat = latMeasurement;
+      _lng = lngMeasurement;
+      _variance = accuracyMeasurement * accuracyMeasurement;
+    } else {
+      int timeIncMilliseconds = timeStampMillisecondsMeasurement - _timeStampMilliseconds;
+      if (timeIncMilliseconds > 0) {
+        _variance += timeIncMilliseconds * maxSpeed * maxSpeed / 1000;
+        _timeStampMilliseconds = timeStampMillisecondsMeasurement;
+      }
+
+      double K = _variance / (_variance + accuracyMeasurement * accuracyMeasurement);
+      _lat += K * (latMeasurement - _lat);
+      _lng += K * (lngMeasurement - _lng);
+      _variance = (1 - K) * _variance;
+    }
+
+    positions.add(Position(
+        longitude: _lng,
+        latitude: _lat,
+        timestamp: position.timestamp,
+        accuracy: position.accuracy,
+        altitude: position.altitude,
+        heading: position.heading,
+        speed: position.speed,
+        speedAccuracy: position.speedAccuracy
+    ));
+  }
 }
 
 class ClientsOnlineController {
   final Socket _socket = TurboGoBloc.socket;
-  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final TimestampController _timestamp = TurboGoBloc.timestampController;
   //final ClientController _clients = TurboGoBloc.clientController;
   ClientsOnlineModel? clientsOnlineModel;
   Box<ClientsOnlineModel> repo = Hive.box('clients_online');
   final LocationSettings _locationSettings = const LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 5
+      distanceFilter: 0
   );
+  StreamSubscription<Position>? _positionStream;
+
+  void _unregisterPositionStream () {
+    _positionStream!.cancel();
+    _positionStream = null;
+  }
+
+  void _registerPositionStream () {
+    if (_positionStream != null) {
+      _unregisterPositionStream();
+    }
+
+    _positionStream = Geolocator.getPositionStream(locationSettings: _locationSettings).listen((Position position) {
+      bool filter = GeoFilters.process(position);
+      if (clientsOnlineModel != null && filter) {
+        update(
+            {
+              //'clientId': _clients.clientModel.uuid,
+              'clientId': clientsOnlineModel?.clientId,
+              'location': {
+                'type': 'Point',
+                'coordinates': [GeoFilters.positions.last.latitude, GeoFilters.positions.last.longitude]
+              },
+            },
+            false
+        );
+      }
+    });
+  }
 
   ClientsOnlineController () {
     Geolocator.checkPermission().then((permission) async {
@@ -141,22 +168,21 @@ class ClientsOnlineController {
         return;
       }
     });
-    Geolocator.getPositionStream(locationSettings: _locationSettings).listen((Position position) {
-      bool filter = GeoFilters.process(position);
-      if (clientsOnlineModel != null && filter) {
-        update(
-          {
-            //'clientId': _clients.clientModel.uuid,
-            'clientId': clientsOnlineModel?.clientId,
-            'location': {
-              'type': 'Point',
-              'coordinates': [GeoFilters.positions.last.latitude, GeoFilters.positions.last.longitude]
-            },
-          },
-          false
-        );
-      }
+
+    Geolocator.isLocationServiceEnabled().then((bool enabled) {
+      if (enabled) _registerPositionStream();
     });
+
+    Geolocator.getServiceStatusStream().listen(
+        (ServiceStatus status) {
+          if (status == ServiceStatus.enabled && _positionStream == null) {
+            _registerPositionStream();
+          } else {
+            _unregisterPositionStream();
+          }
+        }
+    );
+
     /*FlutterCompass.events?.listen((CompassEvent event) {
       update(
           {
@@ -219,7 +245,7 @@ class ClientsOnlineController {
         client['clientId'],
         client['location'],
         client['direction'] != null ? (client['direction'] as num).toDouble() : null,
-        client['updatedAt'] ?? _timestamp.create().toString()
+        client['updatedAt'] ?? _timestamp.create().toTimestamp()
     );
 
     repo.put(c.clientId, c);

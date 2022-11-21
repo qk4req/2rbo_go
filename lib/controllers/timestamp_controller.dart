@@ -5,32 +5,75 @@ import 'package:socket_io_client/socket_io_client.dart';
 
 import '../bloc/turbo_go_bloc.dart';
 
+extension Timestamp on DateTime {
+  static String fourDigits(int n) {
+    int absN = n.abs();
+    String sign = n < 0 ? "-" : "";
+    if (absN >= 1000) return "$n";
+    if (absN >= 100) return "${sign}0$absN";
+    if (absN >= 10) return "${sign}00$absN";
+    return "${sign}000$absN";
+  }
+
+  static String twoDigits(int n) {
+    if (n >= 10) return "$n";
+    return "0$n";
+  }
+
+  String toTimestamp() {
+    String _year = fourDigits(year);
+    String _month = twoDigits(month);
+    String _day = twoDigits(day);
+    String _hour = twoDigits(hour);
+    String _minute = twoDigits(minute);
+    String _second = twoDigits(second);
+
+    if (isUtc) {
+      return "$_year-$_month-${_day}T$_hour:$_minute:${_second}Z";
+    } else {
+      return "$_year-$_month-${_day}T$_hour:$_minute:$_second";
+    }
+  }
+}
+
 class TimestampController {
-  final Socket _socket = TurboGoBloc.socket;
-  Duration? _serverOffset;
-  Duration? _networkOffset;
+  static Socket socket = io(
+      TurboGoBloc.apiUrl,
+      OptionBuilder()
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+          .enableReconnection()
+          .setTimeout(3000)
+          .build()
+  );
+  static Duration? serverOffset;
+  static Duration? networkOffset;
 
   TimestampController() {
     determine();
   }
 
-  determine() async {
-    _socket.on('_', (vars) {
-      DateTime now = DateTime.now().toUtc();
-      _serverOffset = now.difference(DateTime.parse(vars['datetime']));
+  void determine() async {
+    socket.connect();
+    socket.onConnect((_) {
+      socket.emit('timesync');
+      socket.on('timesync', (data) {
+        DateTime now = DateTime.now().toUtc();
+        serverOffset = now.difference(DateTime.parse(data['datetime']));
+      });
     });
-    _networkOffset = Duration(milliseconds: await NTP.getNtpOffset());
+    networkOffset = Duration(milliseconds: await NTP.getNtpOffset(lookUpAddress: 'pool.ntp.org'));
   }
 
   DateTime create() {
     DateTime now = DateTime.now().toUtc();
-    if (_networkOffset != null) {
-      return(now.add(_networkOffset!));
-    } else if (_serverOffset != null) {
-      if (_serverOffset!.isNegative) {
-        return(now.add(_serverOffset!));
+    if (networkOffset != null) {
+      return(now.add(networkOffset!));
+    } else if (serverOffset != null) {
+      if (serverOffset!.isNegative) {
+        return(now.subtract(serverOffset!));
       } else {
-        return(now.subtract(_serverOffset!));
+        return(now.add(serverOffset!));
       }
     } else {
       return (now);

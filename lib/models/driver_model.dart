@@ -7,7 +7,7 @@ part 'driver_model.g.dart';
 
 @HiveType(typeId: 4)
 class DriverModel {
-  final TimestampController _timestamp = TurboGoBloc.timestampController!;
+  final TimestampController _timestamp = TurboGoBloc.timestampController;
 
   @HiveField(0)
   int id;

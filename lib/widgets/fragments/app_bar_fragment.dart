@@ -1,13 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:turbo_go/bloc/turbo_go_event.dart';
+import 'package:turbo_go/controllers/geocoder_controller.dart';
 import 'package:turbo_go/controllers/order_controller.dart';
-import 'package:turbo_go/models/order_model.dart';
 
 
 
@@ -22,23 +18,28 @@ class AppBarFragment extends StatefulWidget {
 }
 
 class _AppBarFragmentState extends State<AppBarFragment> {
-  static const loadingDuration = 1500;
-
+  //static const loadingDuration = 1500;
   final OrderController _order = TurboGoBloc.orderController;
-  final _startPointKey = GlobalKey<FormBuilderFieldState>();
-  final _endPointKey = GlobalKey<FormBuilderFieldState>();
-  Timer? _timer;
-  bool loading = true;
+  final GeocoderController _geocoder = TurboGoBloc.geocoderController;
+  //final _startPointKey = GlobalKey<FormBuilderFieldState>();
+  //final _endPointKey = GlobalKey<FormBuilderFieldState>();
+  //Timer? _timer;
+  bool loading = false;
 
   @override
   void initState() {
-    //_order.repo.watch(key: [_order.newOrderKey]).listen((event) {
-    //});
-    _timer = Timer(const Duration(milliseconds: loadingDuration), () {
+    _geocoder.r.addListener(() {
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
+    });
+    /*_timer = Timer(const Duration(milliseconds: loadingDuration), () {
       setState(() {
         loading = false;
       });
-    });
+    });*/
     super.initState();
   }
 
@@ -47,20 +48,18 @@ class _AppBarFragmentState extends State<AppBarFragment> {
     return BlocListener<TurboGoBloc, TurboGoState>(
       listener: (BuildContext ctx, TurboGoState state) {
         if (state is TurboGoLocationHasChangedState) {
-          _timer?.cancel();
-          _timer = null;
           setState(() {
             loading = true;
           });
         }
 
-        if (state is TurboGoHomeState) {
+        /*if (state is TurboGoHomeState) {
           _timer = Timer(const Duration(milliseconds: loadingDuration), () {
             setState(() {
               loading = false;
             });
           });
-        }
+        }*/
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -71,6 +70,7 @@ class _AppBarFragmentState extends State<AppBarFragment> {
                   builder: (BuildContext ctx, TurboGoState state) {
                     if (state is TurboGoHomeState) {
                       List? fromCoordinates = _order.newOrder.from?['coordinates'];
+
                       return Row(
                         children: [
                           Expanded(child: Container(
