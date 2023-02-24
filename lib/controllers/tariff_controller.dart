@@ -1,8 +1,7 @@
 import 'package:hive/hive.dart';
+import '/models/tariff_model.dart';
 
 
-
-import 'package:turbo_go/models/tariff_model.dart';
 
 class TariffController {
   Box<TariffModel> repo = Hive.box('tariffs');
@@ -28,7 +27,7 @@ class TariffController {
       t.name = t.name ?? tariff['name'];
       t.mapIcon = t.mapIcon ?? tariff['mapIcon'];
       t.baseCost = t.baseCost ?? (tariff['baseCost'] as num).toDouble();
-      t.ridePerMin = t.ridePerMin ?? (tariff['ridePerMin'] as num).toDouble();
+      t.submissionPerKm = t.submissionPerKm ?? (tariff['submissionPerKm'] as num).toDouble();
       t.ridePerKm = t.ridePerKm ?? (tariff['ridePerKm'] as num).toDouble();
       t.waitPerMin = t.waitPerMin ?? (tariff['waitPerMin'] as num).toDouble();
       t.createdAt = t.createdAt ?? tariff['createdAt'];
@@ -38,14 +37,14 @@ class TariffController {
     //}
   }
 
-  void create(Map tariff) {
+  void create(Map tariff) async {
     //if (!contains(tariff)) {
       TariffModel t = TariffModel(
           tariff['id'],
           tariff['name'],
           tariff['mapIcon'],
           (tariff['baseCost'] as num).toDouble(),
-          (tariff['ridePerMin'] as num).toDouble(),
+          (tariff['submissionPerKm'] as num).toDouble(),
           (tariff['ridePerKm'] as num).toDouble(),
           (tariff['waitPerMin'] as num).toDouble(),
           tariff['createdAt'],

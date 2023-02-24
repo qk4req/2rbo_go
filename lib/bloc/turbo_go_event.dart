@@ -33,11 +33,11 @@ class TurboGoEndOfLocationChangeEvent extends TurboGoMapEvent {
 class TurboGoNotSupportedEvent extends TurboGoEvent {
   final Version current;
   final Version required;
-  final List? releaseNotes;
+  //final List? releaseNotes;
   final String upgradeUrl;
 
   const TurboGoNotSupportedEvent(
-      this.current, this.required, this.releaseNotes, this.upgradeUrl
+      this.current, this.required/*, this.releaseNotes*/, this.upgradeUrl
   );
 
   //@override

@@ -12,11 +12,11 @@ class TariffModel {
   @HiveField(2)
   double? baseCost = 50.0;
   @HiveField(3)
-  double? ridePerMin = 10.0;
+  double? submissionPerKm = 15.0;
   @HiveField(5)
-  double? ridePerKm = 10.0;
+  double? ridePerKm = 15.0;
   @HiveField(7)
-  double? waitPerMin = 5.0;
+  double? waitPerMin = 10.0;
   @HiveField(8)
   String? createdAt;
   @HiveField(9)
@@ -30,9 +30,9 @@ class TariffModel {
       this.name,
       this.mapIcon,
       this.baseCost = 50.0,
-      this.ridePerMin = 10.0,
-      this.ridePerKm = 10.0,
-      this.waitPerMin = 5.0,
+      this.submissionPerKm = 15.0,
+      this.ridePerKm = 15.0,
+      this.waitPerMin = 10.0,
       this.createdAt,
       this.updatedAt,
     ]

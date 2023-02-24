@@ -118,7 +118,7 @@ class GeoFilters {
 }
 
 class ClientsOnlineController {
-  final Socket _socket = TurboGoBloc.socket;
+  final Socket _socket = TurboGoBloc.adminsSocket;
   final TimestampController _timestamp = TurboGoBloc.timestampController;
   //final ClientController _clients = TurboGoBloc.clientController;
   ClientsOnlineModel? clientsOnlineModel;

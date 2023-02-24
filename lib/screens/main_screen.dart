@@ -58,7 +58,7 @@ class _MainScreenState extends State<MainScreen>/* with TickerProviderStateMixin
         [
           TurboGoNotConnectedState,
           TurboGoNotSupportedState
-        ].contains(state.runtimeType) && _state != 0
+        ].contains(state.runtimeType)/* && _state != 0*/
         ) {
           setState(() {
             _state = 3;
@@ -74,7 +74,7 @@ class _MainScreenState extends State<MainScreen>/* with TickerProviderStateMixin
                   duration: const Duration(milliseconds: 300),
                   layoutBuilder: (List<Widget> entries) {
                     return Container(
-                      transform: Matrix4.translationValues(0.5, 0.5, 0),
+                      //transform: Matrix4.translationValues(0.5, 0.5, 0),
                       color: Colors.black,//const Color.fromRGBO(32, 33, 36, 1),
                       child: Stack(
                         children: entries,

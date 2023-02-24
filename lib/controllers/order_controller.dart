@@ -14,7 +14,7 @@ import '/models/order_model.dart';
 class OrderController {
   final TimestampController _timestamp = TurboGoBloc.timestampController;
   final ClientsOnlineController _clientsOnline = TurboGoBloc.clientsOnlineController;
-  final Socket _socket = TurboGoBloc.socket;
+  final Socket _socket = TurboGoBloc.adminsSocket;
   late String newOrderKey;
   late OrderModel newOrder;
   OrderModel? last;
@@ -63,6 +63,7 @@ class OrderController {
         order['from'] != null ? (order['from'] is String ? jsonDecode(order['from']) : order['from']) : null,
         order['whither'] != null ? (order['whither'] is String ? jsonDecode(order['whither']) : order['whither']) : null,
         order['comment'],
+        order['confirmedAt'],
         order['startedAt'],
         order['createdAt'] ?? _timestamp.create().toTimestamp(),
         order['updatedAt'] ?? _timestamp.create().toTimestamp(),
@@ -85,6 +86,7 @@ class OrderController {
           'comment': o.comment,
           'totalTime': o.totalTime,
           'totalSum': o.totalSum,
+          'confirmedAt': o.confirmedAt,
           'startedAt': o.startedAt,
           'createdAt': o.createdAt,
           'updatedAt': o.updatedAt
@@ -109,6 +111,7 @@ class OrderController {
     o.from = order['from'] != null ? (order['from'] is String ? jsonDecode(order['from']) : order['from']) : o.from;
     o.whither = order['whither'] != null ? (order['whither'] is String ? jsonDecode(order['whither']) : order['whither']) : o.whither;
     o.comment = order['comment'] ?? o.comment;
+    o.confirmedAt = order['confirmedAt'] ?? o.confirmedAt;
     o.startedAt = order['startedAt'] ?? o.startedAt;
     o.createdAt = order['createdAt'] ?? o.createdAt;
     o.updatedAt = order['updatedAt'] ?? _timestamp.create().toTimestamp();
@@ -130,6 +133,7 @@ class OrderController {
           'comment': o.comment,
           'totalTime': o.totalTime,
           'totalSum': o.totalSum,
+          'confirmedAt': o.confirmedAt,
           'startedAt': o.startedAt,
           'createdAt': o.createdAt,
           'updatedAt': o.updatedAt,
@@ -168,6 +172,7 @@ class OrderController {
         'comment': order['comment'],
         'totalTime': order['totalTime'],
         'totalSum': order['totalSum'],
+        'confirmedAt': order['confirmedAt'],
         'startedAt': order['startedAt'],
         'createdAt': order['createdAt'],
         'updatedAt': order['updatedAt']
@@ -217,7 +222,9 @@ class OrderController {
             return f.compareTo(s);
           });
           last = n.last;
-        }
+        }/* else {
+          last = null;
+        }*/
       }
     }
 

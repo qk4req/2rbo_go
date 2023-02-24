@@ -35,6 +35,8 @@ class OrderModel {
   int? carId;
   @HiveField(14)
   int? promoCodeId;
+  @HiveField(15)
+  String? confirmedAt;
 
   OrderModel(
       this.uuid,
@@ -50,6 +52,7 @@ class OrderModel {
         this.from,
         this.whither,
         this.comment = '',
+        this.confirmedAt,
         this.startedAt,
         this.createdAt,
         this.updatedAt

@@ -26,12 +26,16 @@ class TurboGoNotConnectedState extends TurboGoState {
 class TurboGoNotSupportedState extends TurboGoState {
   final Version current;
   final Version required;
-  final List? releaseNotes;
+  //final List? releaseNotes;
   final String upgradeUrl;
 
   TurboGoNotSupportedState(
-      this.current, this.required, this.releaseNotes, this.upgradeUrl
+      this.current, this.required/*, this.releaseNotes*/, this.upgradeUrl
   ) : super(null);
+}
+
+class TurboGoBannedState extends TurboGoState {
+  TurboGoBannedState() : super(null);
 }
 
 class TurboGoRegState extends TurboGoState {

@@ -40,7 +40,7 @@ class TariffModelAdapter extends TypeAdapter<TariffModel> {
       ..writeByte(2)
       ..write(obj.baseCost)
       ..writeByte(3)
-      ..write(obj.ridePerMin)
+      ..write(obj.submissionPerKm)
       ..writeByte(5)
       ..write(obj.ridePerKm)
       ..writeByte(7)

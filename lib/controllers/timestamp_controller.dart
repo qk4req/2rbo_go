@@ -1,5 +1,4 @@
 import 'package:ntp/ntp.dart';
-import 'package:socket_io_client/socket_io_client.dart';
 
 
 
@@ -37,15 +36,15 @@ extension Timestamp on DateTime {
 }
 
 class TimestampController {
-  static Socket socket = io(
-      TurboGoBloc.apiUrl,
+  /*static Socket socket = io(
+      TurboWorkBloc.apiUrl,
       OptionBuilder()
           .setTransports(['websocket'])
-          .disableAutoConnect()
+          //.enableAutoConnect()
           .enableReconnection()
           .setTimeout(3000)
           .build()
-  );
+  );*/
   static Duration? serverOffset;
   static Duration? networkOffset;
 
@@ -54,13 +53,17 @@ class TimestampController {
   }
 
   void determine() async {
-    socket.connect();
+    /*socket.connect();
     socket.onConnect((_) {
       socket.emit('timesync');
       socket.on('timesync', (data) {
         DateTime now = DateTime.now().toUtc();
         serverOffset = now.difference(DateTime.parse(data['datetime']));
       });
+    });*/
+    TurboGoBloc.mainSocket.on('timesync', (data) {
+      DateTime now = DateTime.now().toUtc();
+      serverOffset = now.difference(DateTime.parse(data['datetime']));
     });
     networkOffset = Duration(milliseconds: await NTP.getNtpOffset(lookUpAddress: 'pool.ntp.org'));
   }

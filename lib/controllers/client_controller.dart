@@ -11,7 +11,7 @@ import '/models/client_model.dart';
 class ClientController {
   final TimestampController _timestamp = TurboGoBloc.timestampController;
   //final ClientsOnlineController _clientsOnline = TurboGoBloc.clientsOnlineController;
-  final Socket _socket = TurboGoBloc.socket;
+  final Socket _socket = TurboGoBloc.adminsSocket;
   //String? _deviceId;
   late ClientModel clientModel;
   Box repo = Hive.box('client');

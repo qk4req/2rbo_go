@@ -6,10 +6,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:turbo_go/controllers/clients_online_controller.dart';
 import 'package:turbo_go/controllers/order_controller.dart';
+import 'package:turbo_go/controllers/tariff_controller.dart';
 import 'package:turbo_go/models/clients_online_model.dart';
+import 'package:turbo_go/models/tariff_model.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:keyboard_service/keyboard_service.dart';
 
+import '../../models/order_model.dart';
 import '/bloc/turbo_go_bloc.dart';
 import '/bloc/turbo_go_event.dart';
 import '/bloc/turbo_go_state.dart';
@@ -88,18 +91,23 @@ double getZoomLevel(List route) {
   return zoomLevel;
 }
 
-class _MapFragmentState extends State<MapFragment>{
-  static final ClientsOnlineController _clientsOnline = TurboGoBloc.clientsOnlineController;
-  final DriverController _driver = TurboGoBloc.driverController;
-  final DriversOnlineController _driversOnline = TurboGoBloc.driversOnlineController;
-  final OrderController _order = TurboGoBloc.orderController;
+final ClientsOnlineController clientsOnlineController = TurboGoBloc.clientsOnlineController;
+final DriverController driverController = TurboGoBloc.driverController;
+final DriversOnlineController driversOnlineController = TurboGoBloc.driversOnlineController;
+final OrderController orderController = TurboGoBloc.orderController;
+final TariffController tariffController = TurboGoBloc.tariffController;
+final ClientsOnlineModel? clientsOnlineModel = TurboGoBloc.clientsOnlineController.clientsOnlineModel;
+
+class _MapFragmentState extends State<MapFragment> with TickerProviderStateMixin {
+  late Animation<double> animation;
+  late AnimationController controller;
   static YandexMapController? mapController;
-  static ClientsOnlineModel? clientsOnlineModel = TurboGoBloc.clientsOnlineController.clientsOnlineModel;
   late Widget _map;
-  static final List<MapObject> _objects = [];
+  static List<MapObject> _objects = [];
   static bool _zoomEnabled = true;
   static bool _scrollEnabled = true;
   static bool _fastTapEnabled = true;
+  static bool _gesturesEnabled = true;
   static const double _defaultZoomLevel = 16.5;
   static final Map<String, Timer?> _timers = {
 
@@ -111,12 +119,14 @@ class _MapFragmentState extends State<MapFragment>{
     _zoomEnabled = true;
     _scrollEnabled = true;
     _fastTapEnabled = true;
+    _gesturesEnabled = true;
   }
 
   static void disableGestures() {
     _zoomEnabled = false;
     _scrollEnabled = false;
     _fastTapEnabled = false;
+    _gesturesEnabled = false;
   }
 
   static void clearObjects() {
@@ -129,11 +139,11 @@ class _MapFragmentState extends State<MapFragment>{
     });
   }
 
-  static void hideAllDrivers () {
+  /*static void hideAllDrivers () {
     //_objects = _objects.map<MapObject>((MapObject o) {
 
     //}).toList();
-  }
+  }*/
 
   static CameraPosition _moveCamera(double lat, double lng, BuildContext context, [bool animated = false]) {
     CameraPosition position = CameraPosition(
@@ -160,7 +170,7 @@ class _MapFragmentState extends State<MapFragment>{
 
   static void defaultCameraPosition(BuildContext context, [bool animated = false]) {
     if (clientsOnlineModel?.location == null) {
-      _clientsOnline.repo.watch().listen((event) {
+      clientsOnlineController.repo.watch().listen((event) {
         if (!triggeredCameraPosition) {
           ClientsOnlineModel c = event.value;
 
@@ -182,6 +192,7 @@ class _MapFragmentState extends State<MapFragment>{
   void cameraPositionCallback (CameraPosition position, CameraUpdateReason reason, finished) {
     KeyboardService.dismiss();
     if (
+      _gesturesEnabled &&
       reason.name == 'gestures'// ||
       //(reason.name == 'application' && position.target.latitude == )
     ) {
@@ -204,32 +215,71 @@ class _MapFragmentState extends State<MapFragment>{
     }
   }
 
-  void driverOnMap(DriversOnlineModel d) {
-    DriverModel? c = _driver.getById(d.driverId);
-    if (c != null) {
-      int? index;
-      bool exist = false;
-      for (MapObject o in _objects) {
-        index = index == null ? 0 : index++;
-        if (o.mapId.value == 'car_${d.driverId}') {
-          exist = true;
-          break;
-        }
+  void buildDrivers() {
+    OrderModel? last = orderController.last;
+    List<DriversOnlineModel> drivers = driversOnlineController.repo.values.where((d) {
+      if (last?.driverId != null && ['submitted', 'confirmed', 'active', 'pause', 'wait'].contains(last?.status)) {
+        return last!.driverId == d.driverId;
+      } else if (last?.tariffId != null && last?.status == 'filled') {
+        return last!.tariffId == d.driver['car']['tariffId'];
       }
 
+      return true;
+    }).toList();
+
+    int i = 0;
+    /*List objects = _objects.toList();
+    for (MapObject o in objects) {
+      if (o.mapId.value.contains('car_')) {
+        if (drivers.where((d) => o.mapId.value == 'car_${d.driverId}').isEmpty) {
+          _objects.removeAt(i);
+        }
+      }
+      i++;
+    }*/
+    _objects = _objects.where((o) {
+      if (o.mapId.value.contains('car_')) {
+        if (drivers.where((d) => o.mapId.value == 'car_${d.driverId}').isEmpty) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+      return true;
+    }).toList();
+
+    for (DriversOnlineModel d in drivers) {
+      DriverModel? c = driverController.getById(d.driverId);
+      TariffModel? t = tariffController.repo.get(c?.car['tariffId']);
+
       if (
-        d.isOnline() &&
-        d.checkAvailability()
+      c != null
       ) {
-        if (exist) {
-          _objects[index!] = placemark(d, c);
+        int? i;
+        bool exist = false;
+        for (MapObject o in _objects) {
+          i = i == null ? 0 : i++;
+          if (o.mapId.value == 'car_${d.driverId}') {
+            exist = true;
+            break;
+          }
         }
-        else {
-          _objects.add(placemark(d, c));
-        }
-      } else {
-        if (exist) {
-          _objects.removeAt(index!);
+
+        if (
+        d.isOnline() &&
+        d.checkAvailability() &&
+        t != null && t.mapIcon is String && t.mapIcon!.isNotEmpty
+        ) {
+          if (exist) {
+            _objects[i!] = _driver(d, c, t);
+          }
+          else {
+            _objects.add(_driver(d, c, t));
+          }
+        } else {
+          if (exist && !['start_point', 'end_point'].contains(_objects[i!].mapId.value)) {
+            _objects.removeAt(i);
+          }
         }
       }
     }
@@ -237,19 +287,19 @@ class _MapFragmentState extends State<MapFragment>{
 
   @override
   void initState() {
-    /*_driversOnline.repo.watch().listen((event) {
-      DriversOnlineModel d = event.value;
-
-
-    });*/
+    controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
+    animation = Tween<double>(begin: 1, end: 1.08).animate(
+        CurvedAnimation(
+          parent: controller,
+          curve: Curves.easeInOutCubic
+        )
+    );
     fromReg = widget.fromReg;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Timer.periodic(const Duration(milliseconds: 1000), (_) {
+      Timer.periodic(const Duration(milliseconds: 200), (_) {
         if (mounted) {
           setState(() {
-            for (DriversOnlineModel d in _driversOnline.repo.values) {
-              driverOnMap(d);
-            }
+            buildDrivers();
           });
         }
       });
@@ -259,71 +309,74 @@ class _MapFragmentState extends State<MapFragment>{
 
   @override
   Widget build(BuildContext context) {
-    _map = YandexMap(
-        mapType: MapType.vector,
-        logoAlignment: const MapAlignment(horizontal: HorizontalAlignment.right, vertical: VerticalAlignment.bottom),
-        //poiLimit: 100,
-        modelsEnabled: false,
-        mode2DEnabled: true,
-        mapObjects: _objects,
-        onCameraPositionChanged: cameraPositionCallback,
-        nightModeEnabled: true,
-        rotateGesturesEnabled: false,
-        tiltGesturesEnabled: false,
-        zoomGesturesEnabled: _zoomEnabled,
-        scrollGesturesEnabled: _scrollEnabled,
-        fastTapEnabled: _fastTapEnabled,
-        onMapCreated: (YandexMapController ctrl) async {
-          mapController = ctrl;
+    _map = ScaleTransition(
+      scale: animation,
+      child: YandexMap(
+          mapType: MapType.vector,
+          logoAlignment: const MapAlignment(horizontal: HorizontalAlignment.right, vertical: VerticalAlignment.bottom),
+          //poiLimit: 100,
+          modelsEnabled: false,
+          mode2DEnabled: true,
+          mapObjects: _objects,
+          onCameraPositionChanged: cameraPositionCallback,
+          nightModeEnabled: true,
+          rotateGesturesEnabled: false,
+          tiltGesturesEnabled: false,
+          zoomGesturesEnabled: _zoomEnabled,
+          scrollGesturesEnabled: _scrollEnabled,
+          fastTapEnabled: _fastTapEnabled,
+          onMapCreated: (YandexMapController ctrl) async {
+            mapController = ctrl;
 
-          if (fromReg) {
-            clearPoints();
-            disableGestures();
-            _objects.add(PlacemarkMapObject(
-              mapId: const MapObjectId('start_point'),
-              point: Point(
-                  latitude: _order.newOrder.from!['coordinates'][0],
-                  longitude: _order.newOrder.from!['coordinates'][1]
-              ),
-              icon: PlacemarkIcon.single(
-                  PlacemarkIconStyle(
-                      anchor: const Offset(0.5, 1),
-                      scale: 1.2,
-                      zIndex: 2,
-                      image: BitmapDescriptor.fromAssetImage('lib/assets/images/start_point.png')
+            if (fromReg) {
+              clearPoints();
+              disableGestures();
+              _objects.add(PlacemarkMapObject(
+                mapId: const MapObjectId('start_point'),
+                point: Point(
+                    latitude: orderController.newOrder.from!['coordinates'][0],
+                    longitude: orderController.newOrder.from!['coordinates'][1]
+                ),
+                icon: PlacemarkIcon.single(
+                    PlacemarkIconStyle(
+                        anchor: const Offset(0.5, 1),
+                        scale: 1.2,
+                        zIndex: 2,
+                        image: BitmapDescriptor.fromAssetImage('lib/assets/images/start_point.png')
+                    )
+                ),
+                opacity: 1,
+              ));
+              await mapController!.moveCamera(CameraUpdate.newCameraPosition(
+                  CameraPosition(
+                      target: Point(
+                          latitude: orderController.newOrder.from!['coordinates'][0],
+                          longitude: orderController.newOrder.from!['coordinates'][1]
+                      ),
+                      zoom: _defaultZoomLevel
                   )
-              ),
-              opacity: 1,
-            ));
-            await mapController!.moveCamera(CameraUpdate.newCameraPosition(
-                CameraPosition(
-                    target: Point(
-                        latitude: _order.newOrder.from!['coordinates'][0],
-                        longitude: _order.newOrder.from!['coordinates'][1]
-                    ),
-                    zoom: _defaultZoomLevel
-                )
-            ));
-          } else {
-            clearObjects();
-            enableGestures();
-            defaultCameraPosition(context);
-          }
-          //BlocProvider.of<TurboGoBloc>(context).add(TurboGoHomeEvent());
-          /*BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
+              ));
+            } else {
+              clearObjects();
+              enableGestures();
+              defaultCameraPosition(context);
+            }
+            //BlocProvider.of<TurboGoBloc>(context).add(TurboGoHomeEvent());
+            /*BlocProvider.of<TurboGoBloc>(context).add(TurboGoEndOfLocationChangeEvent(
           Point(
             latitude: position.target.latitude,
             longitude: position.target.longitude
           )
         ));*/
-        }
+          }
+      ),
     );
 
     return Stack(children: [
       BlocListener<TurboGoBloc, TurboGoState>(
           listener: (BuildContext ctx, TurboGoState state) async {
-            List? fromCoordinates = _order.newOrder.from?['coordinates'];
-            List? whitherCoordinates = _order.newOrder.whither?['coordinates'];
+            List? fromCoordinates = orderController.newOrder.from?['coordinates'];
+            List? whitherCoordinates = orderController.newOrder.whither?['coordinates'];
             bool
             validFromCoordinates =
                 fromCoordinates is List && fromCoordinates.length == 2 &&
@@ -335,6 +388,12 @@ class _MapFragmentState extends State<MapFragment>{
             if (_timers['second'] != null) {
               _timers['second']!.cancel();
               _timers['second'] = null;
+            }
+
+            if (state is TurboGoLocationHasChangedState/* && state.prevState is! TurboGoTariffsState && state.prevState is! TurboGoDriverState*/) {
+              controller.forward();
+            } else {
+              controller.reverse();
             }
 
             if (state is TurboGoHomeState) {
@@ -450,14 +509,15 @@ class _MapFragmentState extends State<MapFragment>{
               }
             } else if (state is TurboGoDriverState) {
               setState(() {
-                enableGestures();
+                disableGestures();
+                //enableGestures();
               });
 
 
 
               _timers.addAll({
                 'second': Timer.periodic(const Duration(milliseconds: 1500), (_) async {
-                  DriversOnlineModel? driver = _driversOnline.getById(_order.newOrder.driverId!);
+                  DriversOnlineModel? driver = driversOnlineController.getById(orderController.newOrder.driverId!);
 
                   if (
                   validFromCoordinates &&
@@ -478,7 +538,7 @@ class _MapFragmentState extends State<MapFragment>{
                         zoom: getZoomLevel([
                           fromCoordinates,
                           driver.location!['coordinates']
-                        ]) - 1
+                        ]) - 2
                       ),
                     ), animation: const MapAnimation());
                   }
@@ -505,7 +565,7 @@ class _MapFragmentState extends State<MapFragment>{
     ]);
   }
 
-  PlacemarkMapObject placemark(DriversOnlineModel d, DriverModel c) {
+  PlacemarkMapObject _driver(DriversOnlineModel d, DriverModel c, TariffModel t) {
     return PlacemarkMapObject(
         isVisible: true,
         opacity: 0.6,
@@ -519,7 +579,7 @@ class _MapFragmentState extends State<MapFragment>{
                 zIndex: 1,
                 scale: 0.5,
                 rotationType: RotationType.rotate,
-                image: BitmapDescriptor.fromBytes(base64Decode(c.car['tariff']['mapIcon']))
+                image: BitmapDescriptor.fromBytes(base64Decode(t.mapIcon!))
             )
         ),
         direction: d.direction!
